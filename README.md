@@ -3,7 +3,7 @@
 Lovelace-Dropdown-Karte für Home Assistant mit **grafischem Konfigurationseditor**, zur Verwendung als eigenständige Detail-Card.
 
 ## Status
-**Version 00.01.00 – Feature-Branch.** \`master\` bleibt ohne ausdrückliche Anweisung unverändert. Lauffähige Versionen werden über GitHub Actions auf dem zugehörigen Commit mit Tags im Format \`xx.xx.xx\` versehen.
+**Version 00.01.01 – Feature-Branch.** \`master\` bleibt ohne ausdrückliche Anweisung unverändert. Lauffähige Versionen werden über GitHub Actions auf dem zugehörigen Commit mit Tags im Format \`xx.xx.xx\` versehen.
 
 ## Funktionen
 - Visueller Lovelace-Editor: Titel, Button, Icon, beliebig viele Menüeinträge.

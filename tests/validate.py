@@ -10,3 +10,5 @@ assert ('const SAM_VERSION="'+version+'"') in js
 assert "getConfigElement()" in js and "config-changed" in js
 assert "custom:ha-sam-dropdown-card" in (root/"README.md").read_text()
 print("PASS: version, HACS manifest, GUI editor")
+
+assert '.className="hint";' not in js.split("root.append(")[-1], "Invalid DOM append return usage"
