@@ -1,35 +1,312 @@
 /* SAM Dropdown Card - 00.01.00 - MIT */
-const SAM_VERSION="00.01.01", SAM_TAG="ha-sam-dropdown-card", SAM_EDITOR="ha-sam-dropdown-card-editor";
-const SAM_ACTIONS=[["light.toggle","Licht umschalten"],["light.turn_on","Licht einschalten"],["light.turn_off","Licht ausschalten"],["switch.toggle","Schalter umschalten"],["scene.turn_on","Szene aktivieren"],["script.turn_on","Skript ausführen"],["button.press","Taster betätigen"],["cover.open_cover","Beschattung öffnen"],["cover.close_cover","Beschattung schließen"],["lawn_mower.dock","Mähroboter zur Ladestation"],["input_select.select_option","Auswahlhelfer setzen"]];
-function samConfig(c){const x=c||{};return {type:"custom:"+SAM_TAG,title:x.title||"",label:x.label||"Aktionen",icon:x.icon||"mdi:menu-down",items:Array.isArray(x.items)?x.items.map(i=>({...i})):[]};}
-function samElem(name,text){const e=document.createElement(name);if(text!==undefined)e.textContent=text;return e;}
-function samIcon(icon){const e=samElem("ha-icon");e.setAttribute("icon",icon||"mdi:gesture-tap-button");e.style.setProperty("--mdc-icon-size","20px");return e;}
-function samReady(i,hass){return !!(i.domain&&i.service&&i.entity&&!i.disabled&&hass?.states?.[i.entity]&&!["unknown","unavailable"].includes(hass.states[i.entity].state)&&(!i.enabled_entity||hass?.states?.[i.enabled_entity]?.state==="on"));}
-class SamDropdownCard extends HTMLElement{
-  constructor(){super();this.attachShadow({mode:"open"});this._cfg=samConfig({});this._hass=null;this._menu=null;this._busy=false;this._outside=e=>{const path=e.composedPath?e.composedPath():[];if(!path.includes(this._menu)&&!path.includes(this))this._close();};this._key=e=>{if(e.key==="Escape"){this._close();this._trigger?.focus();}else if((e.key==="ArrowDown"||e.key==="ArrowUp")&&this._menu){const b=[...this._menu.querySelectorAll("button:not([disabled])")];if(!b.length)return;e.preventDefault();let p=b.indexOf(document.activeElement);b[(p+(e.key==="ArrowDown"?1:b.length-1)+b.length)%b.length].focus();}};this._reposition=()=>this._position();}
-  static getConfigElement(){return document.createElement(SAM_EDITOR);}
-  static getStubConfig(){return {label:"Aktionen",icon:"mdi:menu-down",items:[]};}
-  setConfig(c){this._cfg=samConfig(c);this._close();this._render();}
-  set hass(h){this._hass=h;this._refresh();}
-  getCardSize(){return this._cfg.title?2:1;}
-  disconnectedCallback(){this._close();}
-  _render(){const s=this.shadowRoot;s.innerHTML="";const style=samElem("style");style.textContent="ha-card{padding:12px;color:var(--primary-text-color)}.title{font-weight:600;margin-bottom:9px}.trigger{display:flex;align-items:center;gap:9px;width:100%;min-height:45px;padding:8px 12px;background:rgba(127,127,127,.06);border:1px solid var(--divider-color);border-radius:9px;color:inherit;font:inherit;cursor:pointer;touch-action:manipulation;text-align:left}.label{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}button:disabled{opacity:.5;cursor:not-allowed}";s.append(style);const card=samElem("ha-card");if(this._cfg.title){const h=samElem("div",this._cfg.title);h.className="title";card.append(h);}const button=samElem("button");button.type="button";button.className="trigger";button.setAttribute("aria-haspopup","menu");button.setAttribute("aria-expanded","false");button.append(samIcon(this._cfg.icon));const label=samElem("span",this._cfg.label);label.className="label";button.append(label,samIcon("mdi:chevron-down"));button.addEventListener("click",e=>{e.preventDefault();if(this._menu)this._close();else this._open();});card.append(button);s.append(card);this._trigger=button;this._refresh();}
-  _refresh(){if(this._trigger)this._trigger.disabled=this._busy||!this._cfg.items.length;if(this._menu)for(const b of this._menu.querySelectorAll("button"))b.disabled=this._busy||!samReady(b.__item,this._hass);}
-  _open(){if(this._menu||!this._hass||!this._cfg.items.length)return;document.dispatchEvent(new CustomEvent("sam-dropdown-close",{detail:this}));const popup=samElem("div");popup.setAttribute("role","menu");popup.style.cssText="position:fixed;z-index:2147483640;padding:5px;box-sizing:border-box;border-radius:10px;border:1px solid var(--divider-color);background:var(--ha-card-background,var(--card-background-color,#262626));color:var(--primary-text-color);box-shadow:0 8px 20px #0005;overflow-y:auto";for(const item of this._cfg.items){const b=samElem("button");b.type="button";b.__item=item;b.style.cssText="display:flex;align-items:center;gap:10px;width:100%;min-height:42px;padding:8px;border:0;border-radius:7px;text-align:left;background:transparent;color:inherit;font:inherit;cursor:pointer;touch-action:manipulation";b.append(samIcon(item.icon),samElem("span",item.label||"Aktion"));b.onmouseenter=()=>b.style.background="rgba(68,115,158,.23)";b.onmouseleave=()=>b.style.background="transparent";b.addEventListener("click",async e=>{e.preventDefault();if(this._busy||!samReady(item,this._hass))return;if(item.confirm&&!window.confirm(String(item.confirm)))return;this._busy=true;this._refresh();try{const d=item.data?typeof item.data==="string"?JSON.parse(item.data):{...item.data}:{};if(!d||typeof d!=="object"||Array.isArray(d))throw Error("Ungültige Aktionsdaten");d.entity_id=item.entity;await this._hass.callService(item.domain,item.service,d);this._close();}catch(err){window.alert("Aktion fehlgeschlagen: "+String(err));}finally{this._busy=false;this._refresh();}});popup.append(b);}this._menu=popup;document.body.append(popup);this._position();this._refresh();this._trigger?.setAttribute("aria-expanded","true");document.addEventListener("pointerdown",this._outside,true);document.addEventListener("keydown",this._key,true);window.addEventListener("resize",this._reposition);window.addEventListener("scroll",this._reposition,true);this._other=e=>{if(e.detail!==this)this._close();};document.addEventListener("sam-dropdown-close",this._other);popup.querySelector("button:not([disabled])")?.focus({preventScroll:true});}
-  _position(){if(!this._menu||!this._trigger)return;const r=this._trigger.getBoundingClientRect();const w=Math.min(Math.max(195,r.width),window.innerWidth-8);const room=window.innerHeight-r.bottom;const target=Math.min(this._menu.scrollHeight,window.innerHeight-16);const above=room<target&&r.top>room;const available=above?r.top:room;this._menu.style.width=w+"px";this._menu.style.left=Math.max(4,Math.min(r.left,window.innerWidth-w-4))+"px";this._menu.style.maxHeight=Math.max(42,available-8)+"px";this._menu.style.top=(above?Math.max(4,r.top-Math.min(target,available-8)):r.bottom)+"px";}
-  _close(){if(!this._menu)return;this._menu.remove();this._menu=null;this._trigger?.setAttribute("aria-expanded","false");document.removeEventListener("pointerdown",this._outside,true);document.removeEventListener("keydown",this._key,true);window.removeEventListener("resize",this._reposition);window.removeEventListener("scroll",this._reposition,true);document.removeEventListener("sam-dropdown-close",this._other);}
+const SAM_VERSION="00.01.02", SAM_TAG="ha-sam-dropdown-card", SAM_EDITOR="ha-sam-dropdown-card-editor";
+const SAM_ACTIONS=[["light.toggle", "Licht umschalten"], ["light.turn_on", "Licht einschalten"],
+["light.turn_off", "Licht ausschalten"], ["switch.toggle", "Schalter umschalten"], ["scene.turn_on",
+"Szene aktivieren"], ["script.turn_on", "Skript ausführen"], ["button.press", "Taster betätigen"],
+["cover.open_cover", "Beschattung öffnen"], ["cover.close_cover", "Beschattung schließen"], ["lawn_mower.dock",
+"Mähroboter zur Ladestation"], ["input_select.select_option", "Auswahlhelfer setzen"]];
+function samConfig(c) {
+  const x=c|| {
+  };
+  return {
+    type:"custom:"+SAM_TAG, title:x.title||"", label:x.label||"Aktionen", icon:x.icon||"mdi:menu-down", items:Array.isArray(x.items)?x.items.map(i=>({
+      ...i
+    })):[]
+  };
 }
-class SamDropdownEditor extends HTMLElement{
-  constructor(){super();this.attachShadow({mode:"open"});this._cfg=null;this._hass=null;}
-  setConfig(c){this._cfg=samConfig(c);this._draw();}
-  set hass(h){if(!this._hass&&this._cfg){this._hass=h;this._draw();}else this._hass=h;}
-  _emit(){this.dispatchEvent(new CustomEvent("config-changed",{detail:{config:JSON.parse(JSON.stringify(this._cfg))},bubbles:true,composed:true}));}
-  _input(parent,text,value,cb){const label=samElem("label");label.append(samElem("span",text));const input=samElem("input");input.value=value||"";input.addEventListener("input",()=>{cb(input.value);this._emit();});label.append(input);parent.append(label);return input;}
-  _draw(){if(!this._cfg)return;const s=this.shadowRoot;s.innerHTML="";const st=samElem("style");st.textContent=":host{display:block;color:var(--primary-text-color)}.root{display:grid;gap:12px}label{display:grid;gap:5px;font-size:13px;color:var(--secondary-text-color)}input,select,textarea{box-sizing:border-box;width:100%;min-width:0;padding:9px;border:1px solid var(--divider-color);border-radius:7px;background:var(--card-background-color,#242424);color:var(--primary-text-color);font:inherit}button{border:1px solid var(--divider-color);border-radius:7px;padding:7px 10px;color:var(--primary-text-color);background:transparent;cursor:pointer;font:inherit}button:disabled{opacity:.4}section{border:1px solid var(--divider-color);padding:12px;border-radius:10px;display:grid;gap:10px}header{display:flex;justify-content:space-between;align-items:center}.tools{display:flex;gap:3px}summary{cursor:pointer}h4{margin:5px 0}.hint{color:var(--secondary-text-color);font-size:12px}";s.append(st);const root=samElem("div");root.className="root";s.append(root);root.append(samElem("h4","Darstellung"));for(const [name,key] of [["Titel (optional)","title"],["Button-Text","label"],["Button-Icon (MDI)","icon"]])this._input(root,name,this._cfg[key],v=>this._cfg[key]=v);root.append(samElem("h4","Dropdown-Einträge ("+this._cfg.items.length+")"));const hint=samElem("p","Jeder Menüeintrag löst eine Home-Assistant-Aktion aus; Maschinenaktionen bitte mit Bestätigung absichern.");hint.className="hint";root.append(hint);const dl=samElem("datalist");dl.id="sam-entity-suggestions";for(const id of Object.keys(this._hass?.states||{}).slice(0,9000)){const op=samElem("option");op.value=id;dl.append(op);}root.append(dl);
-    this._cfg.items.forEach((item,i)=>{const sec=samElem("section"),hdr=samElem("header");hdr.append(samElem("b",item.label||"Eintrag "+(i+1)));const tools=samElem("div");tools.className="tools";for(const [name,dir] of [["↑",-1],["↓",1],["×",0]]){const btn=samElem("button",name);if(dir&&((i+dir)<0||(i+dir)>=this._cfg.items.length))btn.disabled=true;btn.onclick=()=>{if(dir){const next=i+dir;[this._cfg.items[i],this._cfg.items[next]]=[this._cfg.items[next],this._cfg.items[i]];}else this._cfg.items.splice(i,1);this._emit();this._draw();};tools.append(btn);}hdr.append(tools);sec.append(hdr);this._input(sec,"Bezeichnung",item.label,v=>item.label=v);this._input(sec,"Icon (MDI)",item.icon,v=>item.icon=v);const act=samElem("label");act.append(samElem("span","Aktion"));const sel=samElem("select");const current=(item.domain||"")+"."+(item.service||"");for(const [value,name] of [...SAM_ACTIONS,["custom","Eigene Aktion"]]){const op=samElem("option",name);op.value=value;sel.append(op);}sel.value=SAM_ACTIONS.some(x=>x[0]===current)?current:"custom";sel.onchange=()=>{if(sel.value==="custom"){item.domain="";item.service="";}else{[item.domain,item.service]=sel.value.split(".");}this._emit();this._draw();};act.append(sel);sec.append(act);if(sel.value==="custom"){this._input(sec,"Domain",item.domain,v=>item.domain=v);this._input(sec,"Service",item.service,v=>item.service=v);}const entity=this._input(sec,"Entität",item.entity,v=>item.entity=v);entity.setAttribute("list","sam-entity-suggestions");const adv=samElem("details"),summary=samElem("summary","Erweiterte Einstellungen");adv.append(summary);this._input(adv,"Zusatzdaten (JSON)",typeof item.data==="string"?item.data:JSON.stringify(item.data||{}),v=>item.data=v);this._input(adv,"Bestätigungstext",item.confirm,v=>item.confirm=v);this._input(adv,"Freigabe-Entität",item.enabled_entity,v=>item.enabled_entity=v);const check=samElem("label");check.append(samElem("span","Eintrag deaktivieren"));const box=samElem("input");box.type="checkbox";box.checked=!!item.disabled;box.onchange=()=>{item.disabled=box.checked;this._emit();};check.append(box);adv.append(check);sec.append(adv);root.append(sec);});const add=samElem("button","+ Eintrag hinzufügen");add.onclick=()=>{this._cfg.items.push({label:"Neue Aktion",icon:"mdi:gesture-tap-button",domain:"light",service:"toggle",entity:""});this._emit();this._draw();};root.append(add);}
+function samElem(name, text) {
+  const e=document.createElement(name);
+  if(text!==undefined)e.textContent=text;
+  return e;
 }
-if(!customElements.get(SAM_TAG))customElements.define(SAM_TAG,SamDropdownCard);
-if(!customElements.get(SAM_EDITOR))customElements.define(SAM_EDITOR,SamDropdownEditor);
+function samIcon(icon) {
+  const e=samElem("ha-icon");
+  e.setAttribute("icon", icon||"mdi:gesture-tap-button");
+  e.style.setProperty("--mdc-icon-size", "20px");
+  return e;
+}
+function samReady(i, hass) {
+  return !!(i.domain&&i.service&&i.entity&&!i.disabled&&hass?.states?.[i.entity]&&!["unknown", "unavailable"].includes(hass.states[i.entity].state)&&(!i.enabled_entity||hass?.states?.[i.enabled_entity]?.state==="on"));
+}
+class SamDropdownCard extends HTMLElement {
+  constructor() {
+    super();
+    this.attachShadow({
+      mode:"open"
+    });
+    this._cfg=samConfig({
+    });
+    this._hass=null;
+    this._menu=null;
+    this._busy=false;
+    this._outside=e=> {
+      const path=e.composedPath?e.composedPath():[];
+      if(!path.includes(this._menu)&&!path.includes(this))this._close();
+    };
+    this._key=e=> {
+      if(e.key==="Escape") {
+        this._close();
+        this._trigger?.focus();
+      }
+      else if((e.key==="ArrowDown"||e.key==="ArrowUp")&&this._menu) {
+        const b=[...this._menu.querySelectorAll("button:not([disabled])")];
+        if(!b.length)return;
+        e.preventDefault();
+        let p=b.indexOf(document.activeElement);
+        b[(p+(e.key==="ArrowDown"?1:b.length-1)+b.length)%b.length].focus();
+      }
+    };
+    this._reposition=()=>this._position();
+  }
+  static getConfigElement() {
+    return document.createElement(SAM_EDITOR);
+  }
+  static getStubConfig() {
+    return {
+      label:"Aktionen", icon:"mdi:menu-down", items:[]
+    };
+  }
+  setConfig(c) {
+    this._cfg=samConfig(c);
+    this._close();
+    this._render();
+  }
+  set hass(h) {
+    this._hass=h;
+    this._refresh();
+  }
+  getCardSize() {
+    return this._cfg.title?2:1;
+  }
+  disconnectedCallback() {
+    this._close();
+  }
+  _render() {
+    const s=this.shadowRoot;
+    s.innerHTML="";
+    const style=samElem("style");
+    style.textContent="ha-card{padding:12px;color:var(--primary-text-color)}.title{font-weight:600;margin-bottom:9px}.trigger{display:flex;align-items:center;gap:9px;width:100%;min-height:45px;padding:8px 12px;background:rgba(127,127,127,.06);border:1px solid var(--divider-color);border-radius:9px;color:inherit;font:inherit;cursor:pointer;touch-action:manipulation;text-align:left}.label{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}button:disabled{opacity:.5;cursor:not-allowed}";
+    s.append(style);
+    const card=samElem("ha-card");
+    if(this._cfg.title) {
+      const h=samElem("div", this._cfg.title);
+      h.className="title";
+      card.append(h);
+    }
+    const button=samElem("button");
+    button.type="button";
+    button.className="trigger";
+    button.setAttribute("aria-haspopup", "menu");
+    button.setAttribute("aria-expanded", "false");
+    button.append(samIcon(this._cfg.icon));
+    const label=samElem("span", this._cfg.label);
+    label.className="label";
+    button.append(label, samIcon("mdi:chevron-down"));
+    button.addEventListener("click", e=> {
+      e.preventDefault();if(this._menu)this._close();else this._open();
+    });
+    card.append(button);
+    s.append(card);
+    this._trigger=button;
+    this._refresh();
+  }
+  _refresh() {
+    if(this._trigger)this._trigger.disabled=this._busy||!this._cfg.items.length;
+    if(this._menu)for(const b of this._menu.querySelectorAll("button"))b.disabled=this._busy||!samReady(b.__item,
+    this._hass);
+  }
+  _open() {
+    if(this._menu||!this._hass||!this._cfg.items.length)return;
+    document.dispatchEvent(new CustomEvent("sam-dropdown-close", {
+      detail:this
+    }));
+    const popup=samElem("div");
+    popup.setAttribute("role", "menu");
+    popup.style.cssText="position:fixed;z-index:2147483640;padding:5px;box-sizing:border-box;border-radius:10px;border:1px solid var(--divider-color);background:var(--ha-card-background,var(--card-background-color,#262626));color:var(--primary-text-color);box-shadow:0 8px 20px #0005;overflow-y:auto";
+    for(const item of this._cfg.items) {
+      const b=samElem("button");
+      b.type="button";
+      b.__item=item;
+      b.style.cssText="display:flex;align-items:center;gap:10px;width:100%;min-height:42px;padding:8px;border:0;border-radius:7px;text-align:left;background:transparent;color:inherit;font:inherit;cursor:pointer;touch-action:manipulation";
+      b.append(samIcon(item.icon), samElem("span", item.label||"Aktion"));
+      b.onmouseenter=()=>b.style.background="rgba(68,115,158,.23)";
+      b.onmouseleave=()=>b.style.background="transparent";
+      b.addEventListener("click", async e=> {
+        e.preventDefault();if(this._busy||!samReady(item, this._hass))return;if(item.confirm&&!window.confirm(String(item.confirm)))return;this._busy=true;this._refresh();try {
+          const d=item.data?typeof item.data==="string"?JSON.parse(item.data): {
+            ...item.data
+          }
+          : {
+          };if(!d||typeof d!=="object"||Array.isArray(d))throw Error("Ungültige Aktionsdaten");d.entity_id=item.entity;await this._hass.callService(item.domain,
+          item.service, d);this._close();
+        }
+        catch(err) {
+          window.alert("Aktion fehlgeschlagen: "+String(err));
+        }
+        finally {
+          this._busy=false;this._refresh();
+        }
+      });
+      popup.append(b);
+    }
+    this._menu=popup;
+    document.body.append(popup);
+    this._position();
+    this._refresh();
+    this._trigger?.setAttribute("aria-expanded", "true");
+    document.addEventListener("pointerdown", this._outside, true);
+    document.addEventListener("keydown", this._key, true);
+    window.addEventListener("resize", this._reposition);
+    window.addEventListener("scroll", this._reposition, true);
+    this._other=e=> {
+      if(e.detail!==this)this._close();
+    };
+    document.addEventListener("sam-dropdown-close", this._other);
+    popup.querySelector("button:not([disabled])")?.focus({
+      preventScroll:true
+    });
+  }
+  _position() {
+    if(!this._menu||!this._trigger)return;
+    const r=this._trigger.getBoundingClientRect();
+    const w=Math.min(Math.max(195, r.width), window.innerWidth-8);
+    const room=window.innerHeight-r.bottom;
+    const target=Math.min(this._menu.scrollHeight, window.innerHeight-16);
+    const above=room<target&&r.top>room;
+    const available=above?r.top:room;
+    this._menu.style.width=w+"px";
+    this._menu.style.left=Math.max(4, Math.min(r.left, window.innerWidth-w-4))+"px";
+    this._menu.style.maxHeight=Math.max(42, available-8)+"px";
+    this._menu.style.top=(above?Math.max(4, r.top-Math.min(target, available-8)):r.bottom)+"px";
+  }
+  _close() {
+    if(!this._menu)return;
+    this._menu.remove();
+    this._menu=null;
+    this._trigger?.setAttribute("aria-expanded", "false");
+    document.removeEventListener("pointerdown", this._outside, true);
+    document.removeEventListener("keydown", this._key, true);
+    window.removeEventListener("resize", this._reposition);
+    window.removeEventListener("scroll", this._reposition, true);
+    document.removeEventListener("sam-dropdown-close", this._other);
+  }
+}
+class SamDropdownEditor extends HTMLElement {
+  constructor() {
+    super();
+    this.attachShadow({
+      mode:"open"
+    });
+    this._cfg=null;
+    this._hass=null;
+  }
+  setConfig(c) {
+    this._cfg=samConfig(c);
+    this._draw();
+  }
+  set hass(h) {
+    if(!this._hass&&this._cfg) {
+      this._hass=h;
+      this._draw();
+    }
+    else this._hass=h;
+  }
+  _emit() {
+    this.dispatchEvent(new CustomEvent("config-changed", {
+      detail: {
+        config:JSON.parse(JSON.stringify(this._cfg))
+      }, bubbles:true, composed:true
+    }));
+  }
+  _input(parent, text, value, cb) {
+    const label=samElem("label");
+    label.append(samElem("span", text));
+    const input=samElem("input");
+    input.value=value||"";
+    input.addEventListener("input", ()=> {
+      cb(input.value);this._emit();
+    });
+    label.append(input);
+    parent.append(label);
+    return input;
+  }
+  _draw() {
+    if(!this._cfg)return;
+    const s=this.shadowRoot;
+    s.innerHTML="";
+    const st=samElem("style");
+    st.textContent=":host{display:block;color:var(--primary-text-color)}.root{display:grid;gap:12px}label{display:grid;gap:5px;font-size:13px;color:var(--secondary-text-color)}input,select,textarea{box-sizing:border-box;width:100%;min-width:0;padding:9px;border:1px solid var(--divider-color);border-radius:7px;background:var(--card-background-color,#242424);color:var(--primary-text-color);font:inherit}button{border:1px solid var(--divider-color);border-radius:7px;padding:7px 10px;color:var(--primary-text-color);background:transparent;cursor:pointer;font:inherit}button:disabled{opacity:.4}section{border:1px solid var(--divider-color);padding:12px;border-radius:10px;display:grid;gap:10px}header{display:flex;justify-content:space-between;align-items:center}.tools{display:flex;gap:3px}summary{cursor:pointer}h4{margin:5px 0}.hint{color:var(--secondary-text-color);font-size:12px}";
+    s.append(st);
+    const root=samElem("div");
+    root.className="root";
+    s.append(root);
+    root.append(samElem("h4", "Darstellung"));
+    for(const [name, key] of [["Titel (optional)", "title"], ["Button-Text", "label"], ["Button-Icon (MDI)",
+    "icon"]])this._input(root, name, this._cfg[key], v=>this._cfg[key]=v);
+    root.append(samElem("h4", "Dropdown-Einträge ("+this._cfg.items.length+")"));
+    const hint=samElem("p", "Jeder Menüeintrag löst eine Home-Assistant-Aktion aus; Maschinenaktionen bitte mit Bestätigung absichern.");
+    hint.className="hint";
+    root.append(hint);
+    const dl=samElem("datalist");
+    dl.id="sam-entity-suggestions";
+    for(const id of Object.keys(this._hass?.states|| {
+    }).slice(0, 9000)) {
+      const op=samElem("option");
+      op.value=id;
+      dl.append(op);
+    }
+    root.append(dl);
+    this._cfg.items.forEach((item, i)=> {
+      const sec=samElem("section"), hdr=samElem("header");hdr.append(samElem("b", item.label||"Eintrag "+(i+1)));const tools=samElem("div");tools.className="tools";for(const [name,
+      dir] of [["↑", -1], ["↓", 1], ["×", 0]]) {
+        const btn=samElem("button", name);if(dir&&((i+dir)<0||(i+dir)>=this._cfg.items.length))btn.disabled=true;btn.onclick=()=> {
+          if(dir) {
+            const next=i+dir;[this._cfg.items[i], this._cfg.items[next]]=[this._cfg.items[next], this._cfg.items[i]];
+          }
+          else this._cfg.items.splice(i, 1);this._emit();this._draw();
+        };tools.append(btn);
+      }
+      hdr.append(tools);sec.append(hdr);this._input(sec, "Bezeichnung", item.label, v=>item.label=v);this._input(sec,
+      "Icon (MDI)", item.icon, v=>item.icon=v);const act=samElem("label");act.append(samElem("span", "Aktion"));const sel=samElem("select");const current=(item.domain||"")+"."+(item.service||"");for(const [value,
+      name] of [...SAM_ACTIONS, ["custom", "Eigene Aktion"]]) {
+        const op=samElem("option", name);op.value=value;sel.append(op);
+      }
+      sel.value=SAM_ACTIONS.some(x=>x[0]===current)?current:"custom";sel.onchange=()=> {
+        if(sel.value==="custom") {
+          item.domain="";item.service="";
+        }
+        else {
+          [item.domain, item.service]=sel.value.split(".");
+        }
+        this._emit();this._draw();
+      };act.append(sel);sec.append(act);if(sel.value==="custom") {
+        this._input(sec, "Domain", item.domain, v=>item.domain=v);this._input(sec, "Service", item.service,
+        v=>item.service=v);
+      }
+      const entity=this._input(sec, "Entität", item.entity, v=>item.entity=v);entity.setAttribute("list",
+      "sam-entity-suggestions");const adv=samElem("details"), summary=samElem("summary", "Erweiterte Einstellungen");adv.append(summary);this._input(adv,
+      "Zusatzdaten (JSON)", typeof item.data==="string"?item.data:JSON.stringify(item.data|| {
+      }), v=>item.data=v);this._input(adv, "Bestätigungstext", item.confirm, v=>item.confirm=v);this._input(adv,
+      "Freigabe-Entität", item.enabled_entity, v=>item.enabled_entity=v);const check=samElem("label");check.append(samElem("span",
+      "Eintrag deaktivieren"));const box=samElem("input");box.type="checkbox";box.checked=!!item.disabled;box.onchange=()=> {
+        item.disabled=box.checked;this._emit();
+      };check.append(box);adv.append(check);sec.append(adv);root.append(sec);
+    });
+    const add=samElem("button", "+ Eintrag hinzufügen");
+    add.onclick=()=> {
+      this._cfg.items.push({
+        label:"Neue Aktion", icon:"mdi:gesture-tap-button", domain:"light", service:"toggle", entity:""
+      });
+      this._emit();
+      this._draw();
+    };
+    root.append(add);
+  }
+}
+if(!customElements.get(SAM_TAG))customElements.define(SAM_TAG, SamDropdownCard);
+if(!customElements.get(SAM_EDITOR))customElements.define(SAM_EDITOR, SamDropdownEditor);
 window.customCards=window.customCards||[];
-if(!window.customCards.some(x=>x.type===SAM_TAG))window.customCards.push({type:SAM_TAG,name:"SAM Dropdown Card",preview:true,description:"Dropdown-Karte mit grafischem Editor und Home-Assistant-Aktionen"});
+if(!window.customCards.some(x=>x.type===SAM_TAG))window.customCards.push({
+  type:SAM_TAG, name:"SAM Dropdown Card", preview:true, description:"Dropdown-Karte mit grafischem Editor und Home-Assistant-Aktionen"
+});
 console.info("SAM Dropdown Card "+SAM_VERSION);

@@ -3,7 +3,7 @@
 Lovelace-Dropdown-Karte für Home Assistant mit **grafischem Konfigurationseditor**, zur Verwendung als eigenständige Detail-Card.
 
 ## Status
-**Version 00.01.01 – Feature-Branch.** \`master\` bleibt ohne ausdrückliche Anweisung unverändert. Lauffähige Versionen werden über GitHub Actions auf dem zugehörigen Commit mit Tags im Format \`xx.xx.xx\` versehen.
+**Version 00.01.02 – Feature-Branch.** \`master\` bleibt ohne ausdrückliche Anweisung unverändert. Lauffähige Versionen werden über GitHub Actions auf dem zugehörigen Commit mit Tags im Format \`xx.xx.xx\` versehen.
 
 ## Funktionen
 - Visueller Lovelace-Editor: Titel, Button, Icon, beliebig viele Menüeinträge.
@@ -47,3 +47,14 @@ Fehlerberichte und Kommentare sind willkommen: [Issues](https://github.com/Salva
 2. \`master\` nur mit ausdrücklicher Freigabe ändern.
 3. Möglichst wenige, geprüfte Commits.
 4. **Jeder lauffähige Commit** erhält ein unveränderliches annotiertes Git-Tag gemäß \`VERSION\` im Format \`xx.xx.xx\`, auch außerhalb von \`master\`.
+
+## Codeformatierung
+
+Die JavaScript-Implementierung wird künftig **mehrzeilig und lesbar** gepflegt. Das Repository enthält `.clang-format` (Google-Stil, 2 Leerzeichen, maximal 100 Zeichen, keine einzeiligen Funktionen). Zum automatischen Formatieren auf deinem Rechner:
+
+```bash
+clang-format -i -style=file dist/ha-sam-dropdown-card.js
+node --check dist/ha-sam-dropdown-card.js
+```
+
+**Hinweis:** Die Umstrukturierung in `00.01.02` erfolgte als reine Whitespace-/Zeilenumbruchformatierung (plus Versionskonstante); der exakte `clang-format`-Lauf selbst muss auf einer Umgebung mit installiertem clang-format noch geprüft werden.
