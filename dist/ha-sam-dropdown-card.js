@@ -1,15 +1,17 @@
-/* SAM Dropdown Card - 00.01.00 - MIT */
-const SAM_VERSION="00.01.02", SAM_TAG="ha-sam-dropdown-card", SAM_EDITOR="ha-sam-dropdown-card-editor";
+/* SAM Dropdown Card - MIT License */
+const SAM_VERSION="00.01.03", SAM_TAG="ha-sam-dropdown-card", SAM_EDITOR="ha-sam-dropdown-card-editor";
 const SAM_ACTIONS=[["light.toggle", "Licht umschalten"], ["light.turn_on", "Licht einschalten"],
 ["light.turn_off", "Licht ausschalten"], ["switch.toggle", "Schalter umschalten"], ["scene.turn_on",
 "Szene aktivieren"], ["script.turn_on", "Skript ausführen"], ["button.press", "Taster betätigen"],
-["cover.open_cover", "Beschattung öffnen"], ["cover.close_cover", "Beschattung schließen"], ["lawn_mower.dock",
+["cover.open_cover", "Beschattung öffnen"], ["cover.close_cover", "Beschattung schließen"],
+["lawn_mower.dock",
 "Mähroboter zur Ladestation"], ["input_select.select_option", "Auswahlhelfer setzen"]];
 function samConfig(c) {
   const x=c|| {
   };
   return {
-    type:"custom:"+SAM_TAG, title:x.title||"", label:x.label||"Aktionen", icon:x.icon||"mdi:menu-down", items:Array.isArray(x.items)?x.items.map(i=>({
+    type:"custom:"+SAM_TAG, title:x.title||"", label:x.label||"Aktionen", icon:x.icon||"mdi:menu-down",
+    items:Array.isArray(x.items)?x.items.map(i=>( {
       ...i
     })):[]
   };
@@ -26,15 +28,16 @@ function samIcon(icon) {
   return e;
 }
 function samReady(i, hass) {
-  return !!(i.domain&&i.service&&i.entity&&!i.disabled&&hass?.states?.[i.entity]&&!["unknown", "unavailable"].includes(hass.states[i.entity].state)&&(!i.enabled_entity||hass?.states?.[i.enabled_entity]?.state==="on"));
+  return !!(i.domain&&i.service&&i.entity&&!i.disabled&&hass?.states?.[i.entity]&&!["unknown",
+  "unavailable"].includes(hass.states[i.entity].state)&&(!i.enabled_entity||hass?.states?.[i.enabled_entity]?.state==="on"));
 }
 class SamDropdownCard extends HTMLElement {
   constructor() {
     super();
-    this.attachShadow({
+    this.attachShadow( {
       mode:"open"
     });
-    this._cfg=samConfig({
+    this._cfg=samConfig( {
     });
     this._hass=null;
     this._menu=null;
@@ -85,7 +88,37 @@ class SamDropdownCard extends HTMLElement {
     const s=this.shadowRoot;
     s.innerHTML="";
     const style=samElem("style");
-    style.textContent="ha-card{padding:12px;color:var(--primary-text-color)}.title{font-weight:600;margin-bottom:9px}.trigger{display:flex;align-items:center;gap:9px;width:100%;min-height:45px;padding:8px 12px;background:rgba(127,127,127,.06);border:1px solid var(--divider-color);border-radius:9px;color:inherit;font:inherit;cursor:pointer;touch-action:manipulation;text-align:left}.label{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}button:disabled{opacity:.5;cursor:not-allowed}";
+    style.textContent=`
+      ha-card {
+      padding:12px;
+      color:var(--primary-text-color)}
+      .title {
+      font-weight:600;
+      margin-bottom:9px}
+      .trigger {
+      display:flex;
+      align-items:center;
+      gap:9px;
+      width:100%;
+      min-height:45px;
+      padding:8px 12px;
+      background:rgba(127,127,127,.06);
+      border:1px solid var(--divider-color);
+      border-radius:9px;
+      color:inherit;
+      font:inherit;
+      cursor:pointer;
+      touch-action:manipulation;
+      text-align:left}
+      .label {
+      flex:1;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      white-space:nowrap}
+      button:disabled {
+      opacity:.5;
+      cursor:not-allowed}
+    `;
     s.append(style);
     const card=samElem("ha-card");
     if(this._cfg.title) {
@@ -103,7 +136,9 @@ class SamDropdownCard extends HTMLElement {
     label.className="label";
     button.append(label, samIcon("mdi:chevron-down"));
     button.addEventListener("click", e=> {
-      e.preventDefault();if(this._menu)this._close();else this._open();
+      e.preventDefault();
+      if(this._menu)this._close();
+      else this._open();
     });
     card.append(button);
     s.append(card);
@@ -122,29 +157,65 @@ class SamDropdownCard extends HTMLElement {
     }));
     const popup=samElem("div");
     popup.setAttribute("role", "menu");
-    popup.style.cssText="position:fixed;z-index:2147483640;padding:5px;box-sizing:border-box;border-radius:10px;border:1px solid var(--divider-color);background:var(--ha-card-background,var(--card-background-color,#262626));color:var(--primary-text-color);box-shadow:0 8px 20px #0005;overflow-y:auto";
+    popup.style.cssText=`
+      position:fixed;
+      z-index:2147483640;
+      padding:5px;
+      box-sizing:border-box;
+      border-radius:10px;
+      border:1px solid var(--divider-color);
+      background:var(--ha-card-background,var(--card-background-color,#262626));
+      color:var(--primary-text-color);
+      box-shadow:0 8px 20px #0005;
+      overflow-y:auto
+    `;
     for(const item of this._cfg.items) {
       const b=samElem("button");
       b.type="button";
       b.__item=item;
-      b.style.cssText="display:flex;align-items:center;gap:10px;width:100%;min-height:42px;padding:8px;border:0;border-radius:7px;text-align:left;background:transparent;color:inherit;font:inherit;cursor:pointer;touch-action:manipulation";
+      b.style.cssText=`
+      display:flex;
+      align-items:center;
+      gap:10px;
+      width:100%;
+      min-height:42px;
+      padding:8px;
+      border:0;
+      border-radius:7px;
+      text-align:left;
+      background:transparent;
+      color:inherit;
+      font:inherit;
+      cursor:pointer;
+      touch-action:manipulation
+    `;
       b.append(samIcon(item.icon), samElem("span", item.label||"Aktion"));
       b.onmouseenter=()=>b.style.background="rgba(68,115,158,.23)";
       b.onmouseleave=()=>b.style.background="transparent";
       b.addEventListener("click", async e=> {
-        e.preventDefault();if(this._busy||!samReady(item, this._hass))return;if(item.confirm&&!window.confirm(String(item.confirm)))return;this._busy=true;this._refresh();try {
+        e.preventDefault();
+        if(this._busy||!samReady(item, this._hass))return;
+        if(item.confirm&&!window.confirm(String(item.confirm)))return;
+        this._busy=true;
+        this._refresh();
+        try {
           const d=item.data?typeof item.data==="string"?JSON.parse(item.data): {
             ...item.data
           }
           : {
-          };if(!d||typeof d!=="object"||Array.isArray(d))throw Error("Ungültige Aktionsdaten");d.entity_id=item.entity;await this._hass.callService(item.domain,
-          item.service, d);this._close();
+          };
+          if(!d||typeof d!=="object"||Array.isArray(d))throw Error("Ungültige Aktionsdaten");
+          d.entity_id=item.entity;
+          await this._hass.callService(item.domain,
+          item.service, d);
+          this._close();
         }
         catch(err) {
           window.alert("Aktion fehlgeschlagen: "+String(err));
         }
         finally {
-          this._busy=false;this._refresh();
+          this._busy=false;
+          this._refresh();
         }
       });
       popup.append(b);
@@ -162,7 +233,7 @@ class SamDropdownCard extends HTMLElement {
       if(e.detail!==this)this._close();
     };
     document.addEventListener("sam-dropdown-close", this._other);
-    popup.querySelector("button:not([disabled])")?.focus({
+    popup.querySelector("button:not([disabled])")?.focus( {
       preventScroll:true
     });
   }
@@ -194,7 +265,7 @@ class SamDropdownCard extends HTMLElement {
 class SamDropdownEditor extends HTMLElement {
   constructor() {
     super();
-    this.attachShadow({
+    this.attachShadow( {
       mode:"open"
     });
     this._cfg=null;
@@ -224,7 +295,8 @@ class SamDropdownEditor extends HTMLElement {
     const input=samElem("input");
     input.value=value||"";
     input.addEventListener("input", ()=> {
-      cb(input.value);this._emit();
+      cb(input.value);
+      this._emit();
     });
     label.append(input);
     parent.append(label);
@@ -235,7 +307,59 @@ class SamDropdownEditor extends HTMLElement {
     const s=this.shadowRoot;
     s.innerHTML="";
     const st=samElem("style");
-    st.textContent=":host{display:block;color:var(--primary-text-color)}.root{display:grid;gap:12px}label{display:grid;gap:5px;font-size:13px;color:var(--secondary-text-color)}input,select,textarea{box-sizing:border-box;width:100%;min-width:0;padding:9px;border:1px solid var(--divider-color);border-radius:7px;background:var(--card-background-color,#242424);color:var(--primary-text-color);font:inherit}button{border:1px solid var(--divider-color);border-radius:7px;padding:7px 10px;color:var(--primary-text-color);background:transparent;cursor:pointer;font:inherit}button:disabled{opacity:.4}section{border:1px solid var(--divider-color);padding:12px;border-radius:10px;display:grid;gap:10px}header{display:flex;justify-content:space-between;align-items:center}.tools{display:flex;gap:3px}summary{cursor:pointer}h4{margin:5px 0}.hint{color:var(--secondary-text-color);font-size:12px}";
+    st.textContent=`
+      :host {
+      display:block;
+      color:var(--primary-text-color)}
+      .root {
+      display:grid;
+      gap:12px}
+      label {
+      display:grid;
+      gap:5px;
+      font-size:13px;
+      color:var(--secondary-text-color)}
+      input,select,textarea {
+      box-sizing:border-box;
+      width:100%;
+      min-width:0;
+      padding:9px;
+      border:1px solid var(--divider-color);
+      border-radius:7px;
+      background:var(--card-background-color,#242424);
+      color:var(--primary-text-color);
+      font:inherit}
+      button {
+      border:1px solid var(--divider-color);
+      border-radius:7px;
+      padding:7px 10px;
+      color:var(--primary-text-color);
+      background:transparent;
+      cursor:pointer;
+      font:inherit}
+      button:disabled {
+      opacity:.4}
+      section {
+      border:1px solid var(--divider-color);
+      padding:12px;
+      border-radius:10px;
+      display:grid;
+      gap:10px}
+      header {
+      display:flex;
+      justify-content:space-between;
+      align-items:center}
+      .tools {
+      display:flex;
+      gap:3px}
+      summary {
+      cursor:pointer}
+      h4 {
+      margin:5px 0}
+      .hint {
+      color:var(--secondary-text-color);
+      font-size:12px}
+    `;
     s.append(st);
     const root=samElem("div");
     root.className="root";
@@ -257,44 +381,88 @@ class SamDropdownEditor extends HTMLElement {
     }
     root.append(dl);
     this._cfg.items.forEach((item, i)=> {
-      const sec=samElem("section"), hdr=samElem("header");hdr.append(samElem("b", item.label||"Eintrag "+(i+1)));const tools=samElem("div");tools.className="tools";for(const [name,
+      const sec=samElem("section"), hdr=samElem("header");
+      hdr.append(samElem("b", item.label||"Eintrag "+(i+1)));
+      const tools=samElem("div");
+      tools.className="tools";
+      for(const [name,
       dir] of [["↑", -1], ["↓", 1], ["×", 0]]) {
-        const btn=samElem("button", name);if(dir&&((i+dir)<0||(i+dir)>=this._cfg.items.length))btn.disabled=true;btn.onclick=()=> {
+        const btn=samElem("button", name);
+        if(dir&&((i+dir)<0||(i+dir)>=this._cfg.items.length))btn.disabled=true;
+        btn.onclick=()=> {
           if(dir) {
-            const next=i+dir;[this._cfg.items[i], this._cfg.items[next]]=[this._cfg.items[next], this._cfg.items[i]];
+            const next=i+dir;
+            [this._cfg.items[i], this._cfg.items[next]]=[this._cfg.items[next], this._cfg.items[i]];
           }
-          else this._cfg.items.splice(i, 1);this._emit();this._draw();
-        };tools.append(btn);
+          else this._cfg.items.splice(i, 1);
+          this._emit();
+          this._draw();
+        };
+        tools.append(btn);
       }
-      hdr.append(tools);sec.append(hdr);this._input(sec, "Bezeichnung", item.label, v=>item.label=v);this._input(sec,
-      "Icon (MDI)", item.icon, v=>item.icon=v);const act=samElem("label");act.append(samElem("span", "Aktion"));const sel=samElem("select");const current=(item.domain||"")+"."+(item.service||"");for(const [value,
+      hdr.append(tools);
+      sec.append(hdr);
+      this._input(sec, "Bezeichnung", item.label, v=>item.label=v);
+      this._input(sec,
+      "Icon (MDI)", item.icon, v=>item.icon=v);
+      const act=samElem("label");
+      act.append(samElem("span", "Aktion"));
+      const sel=samElem("select");
+      const current=(item.domain||"")+"."+(item.service||"");
+      for(const [value,
       name] of [...SAM_ACTIONS, ["custom", "Eigene Aktion"]]) {
-        const op=samElem("option", name);op.value=value;sel.append(op);
+        const op=samElem("option", name);
+        op.value=value;
+        sel.append(op);
       }
-      sel.value=SAM_ACTIONS.some(x=>x[0]===current)?current:"custom";sel.onchange=()=> {
+      sel.value=SAM_ACTIONS.some(x=>x[0]===current)?current:"custom";
+      sel.onchange=()=> {
         if(sel.value==="custom") {
-          item.domain="";item.service="";
+          item.domain="";
+          item.service="";
         }
         else {
           [item.domain, item.service]=sel.value.split(".");
         }
-        this._emit();this._draw();
-      };act.append(sel);sec.append(act);if(sel.value==="custom") {
-        this._input(sec, "Domain", item.domain, v=>item.domain=v);this._input(sec, "Service", item.service,
+        this._emit();
+        this._draw();
+      };
+      act.append(sel);
+      sec.append(act);
+      if(sel.value==="custom") {
+        this._input(sec, "Domain", item.domain, v=>item.domain=v);
+        this._input(sec, "Service", item.service,
         v=>item.service=v);
       }
-      const entity=this._input(sec, "Entität", item.entity, v=>item.entity=v);entity.setAttribute("list",
-      "sam-entity-suggestions");const adv=samElem("details"), summary=samElem("summary", "Erweiterte Einstellungen");adv.append(summary);this._input(adv,
+      const entity=this._input(sec, "Entität", item.entity, v=>item.entity=v);
+      entity.setAttribute("list",
+      "sam-entity-suggestions");
+      const adv=samElem("details"), summary=samElem("summary", "Erweiterte Einstellungen");
+      adv.append(summary);
+      this._input(adv,
       "Zusatzdaten (JSON)", typeof item.data==="string"?item.data:JSON.stringify(item.data|| {
-      }), v=>item.data=v);this._input(adv, "Bestätigungstext", item.confirm, v=>item.confirm=v);this._input(adv,
-      "Freigabe-Entität", item.enabled_entity, v=>item.enabled_entity=v);const check=samElem("label");check.append(samElem("span",
-      "Eintrag deaktivieren"));const box=samElem("input");box.type="checkbox";box.checked=!!item.disabled;box.onchange=()=> {
-        item.disabled=box.checked;this._emit();
-      };check.append(box);adv.append(check);sec.append(adv);root.append(sec);
+      }), v=>item.data=v);
+      this._input(adv, "Bestätigungstext", item.confirm, v=>item.confirm=v);
+      this._input(adv,
+      "Freigabe-Entität", item.enabled_entity, v=>item.enabled_entity=v);
+      const check=samElem("label");
+      check.append(samElem("span",
+      "Eintrag deaktivieren"));
+      const box=samElem("input");
+      box.type="checkbox";
+      box.checked=!!item.disabled;
+      box.onchange=()=> {
+        item.disabled=box.checked;
+        this._emit();
+      };
+      check.append(box);
+      adv.append(check);
+      sec.append(adv);
+      root.append(sec);
     });
     const add=samElem("button", "+ Eintrag hinzufügen");
     add.onclick=()=> {
-      this._cfg.items.push({
+      this._cfg.items.push( {
         label:"Neue Aktion", icon:"mdi:gesture-tap-button", domain:"light", service:"toggle", entity:""
       });
       this._emit();
@@ -306,7 +474,7 @@ class SamDropdownEditor extends HTMLElement {
 if(!customElements.get(SAM_TAG))customElements.define(SAM_TAG, SamDropdownCard);
 if(!customElements.get(SAM_EDITOR))customElements.define(SAM_EDITOR, SamDropdownEditor);
 window.customCards=window.customCards||[];
-if(!window.customCards.some(x=>x.type===SAM_TAG))window.customCards.push({
+if(!window.customCards.some(x=>x.type===SAM_TAG))window.customCards.push( {
   type:SAM_TAG, name:"SAM Dropdown Card", preview:true, description:"Dropdown-Karte mit grafischem Editor und Home-Assistant-Aktionen"
 });
 console.info("SAM Dropdown Card "+SAM_VERSION);

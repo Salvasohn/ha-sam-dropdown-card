@@ -3,7 +3,7 @@
 Lovelace-Dropdown-Karte für Home Assistant mit **grafischem Konfigurationseditor**, zur Verwendung als eigenständige Detail-Card.
 
 ## Status
-**Version 00.01.02 – Feature-Branch.** \`master\` bleibt ohne ausdrückliche Anweisung unverändert. Lauffähige Versionen werden über GitHub Actions auf dem zugehörigen Commit mit Tags im Format \`xx.xx.xx\` versehen.
+**Version 00.01.03 – Feature-Branch.** \`master\` bleibt ohne ausdrückliche Anweisung unverändert. Lauffähige Versionen werden über GitHub Actions auf dem zugehörigen Commit mit Tags im Format \`xx.xx.xx\` versehen.
 
 ## Funktionen
 - Visueller Lovelace-Editor: Titel, Button, Icon, beliebig viele Menüeinträge.
@@ -57,4 +57,4 @@ clang-format -i -style=file dist/ha-sam-dropdown-card.js
 node --check dist/ha-sam-dropdown-card.js
 ```
 
-**Hinweis:** Die Umstrukturierung in `00.01.02` erfolgte als reine Whitespace-/Zeilenumbruchformatierung (plus Versionskonstante); der exakte `clang-format`-Lauf selbst muss auf einer Umgebung mit installiertem clang-format noch geprüft werden.
+**Hinweis:** In `00.01.03` wurden zusätzlich umfangreiche CSS-Strings in mehrzeilige Template-Literale umgewandelt. `clang-format` ist über `.clang-format` konfiguriert; der exakte CLI-Abgleich ist weiterhin auf einem Rechner mit installiertem clang-format auszuführen.
