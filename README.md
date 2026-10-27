@@ -1,21 +1,24 @@
 # SAM Dropdown Card
 
-Lovelace-Dropdown-Karte für Home Assistant mit **grafischem Konfigurationseditor**, zur Verwendung als eigenständige Detail-Card.
+Lovelace-Dropdown-Karte für Home Assistant mit **grafischem Konfigurationseditor** zur Verwendung als eigenständige Detail-Card.
 
 ## Status
-**Version 00.01.03 – Feature-Branch.** \`master\` bleibt ohne ausdrückliche Anweisung unverändert. Lauffähige Versionen werden über GitHub Actions auf dem zugehörigen Commit mit Tags im Format \`xx.xx.xx\` versehen.
+
+**Version 00.01.04 – Feature-Branch.** `master` bleibt ohne ausdrückliche Anweisung unverändert. Lauffähige Commits werden automatisch mit dem jeweiligen Tag im Format `xx.xx.xx` versehen.
 
 ## Funktionen
+
 - Visueller Lovelace-Editor: Titel, Button, Icon, beliebig viele Menüeinträge.
-- Pro Eintrag: Beschriftung, MDI-Icon, HA-Domain/Service, Entität, Zusatzdaten (JSON), Bestätigung, Freigabe und Deaktivierung.
-- Menüs werden als schwebendes Popover angezeigt. Touch, Maus und Tastatur.
-- Nur vorhandene/verfügbare Entitäten sind schaltbar; Fehler werden angezeigt.
-- Konfiguration bleibt im Home-Assistant-Dashboard gespeichert.
+- Pro Eintrag: Beschriftung, MDI-Icon, Domain/Service, Entität, Zusatzdaten (JSON), Bestätigung, Freigabe und Deaktivierung.
+- Menüs werden als schwebendes Popover angezeigt; Bedienung per Touch, Maus und Tastatur.
+- Nur vorhandene und verfügbare Entitäten sind schaltbar; Aktionsfehler werden angezeigt.
+- Die Konfiguration bleibt im Home-Assistant-Dashboard gespeichert.
 
 ## Verwendung
-Karte: \`custom:ha-sam-dropdown-card\`
 
-\`\`\`yaml
+Kartentyp: `custom:ha-sam-dropdown-card`
+
+```yaml
 type: custom:ha-sam-dropdown-card
 title: Garage
 label: Licht
@@ -31,30 +34,43 @@ items:
     domain: light
     service: toggle
     entity: light.garage_innen_licht_1
-\`\`\`
+```
 
 ## Installation
-Das HACS-Custom-Repository ist \`https://github.com/Salvasohn/ha-sam-dropdown-card\` (Typ **Dashboard**).
-Die reguläre Installation über HACS wird nach der ausdrücklich genehmigten Veröffentlichung auf dem Standardbranch geprüft.
 
-Bis dahin manuell: \`dist/ha-sam-dropdown-card.js\` nach \`/config/www/ha-sam-dropdown-card.js\` kopieren, unter **Einstellungen → Dashboards → Ressourcen** die Ressource \`/local/ha-sam-dropdown-card.js\` als JavaScript-Modul eintragen.
+Custom Repository: `https://github.com/Salvasohn/ha-sam-dropdown-card` (HACS-Typ **Dashboard**). HACS-Installation erfolgt erst nach freigegebener Veröffentlichung auf `master`.
 
-## Mitwirkung
-Fehlerberichte und Kommentare sind willkommen: [Issues](https://github.com/Salvasohn/ha-sam-dropdown-card/issues). Der Eigentümer und autorisierte Apps entscheiden über alle Änderungen. In öffentlichen GitHub-Repositories können Dritte weiterhin Pull Requests aus Forks *vorschlagen*, ohne Schreibrechte am Original zu haben; diese werden nicht automatisch übernommen.
+Für den Test ohne Master-Merge kann das getaggte JavaScript-Artefakt aus `00.01.04` nach `/config/www/ha-sam-dropdown-card.js` kopiert und als Dashboard-Ressource `/local/ha-sam-dropdown-card.js?v=00.01.04` registriert werden.
 
-## Entwicklungsregeln
-1. Lineare Historie (Fast-Forward oder Rebase; keine Merge-Commits).
-2. \`master\` nur mit ausdrücklicher Freigabe ändern.
-3. Möglichst wenige, geprüfte Commits.
-4. **Jeder lauffähige Commit** erhält ein unveränderliches annotiertes Git-Tag gemäß \`VERSION\` im Format \`xx.xx.xx\`, auch außerhalb von \`master\`.
+## Google JavaScript Style Guide
 
-## Codeformatierung
+Die Implementierung folgt bei **Bezeichnern** dem [Google JavaScript Style Guide](https://google.github.io/styleguide/jsguide.html#naming):
 
-Die JavaScript-Implementierung wird künftig **mehrzeilig und lesbar** gepflegt. Das Repository enthält `.clang-format` (Google-Stil, 2 Leerzeichen, maximal 100 Zeichen, keine einzeiligen Funktionen). Zum automatischen Formatieren auf deinem Rechner:
+| Kategorie | Regel | Beispiele |
+| --- | --- | --- |
+| Klassen | `UpperCamelCase` | `SamDropdownCard`, `SamDropdownEditor` |
+| Funktionen und Methoden | `lowerCamelCase` | `normalizeCardConfig`, `createElement`, `isActionAvailable` |
+| Parameter und lokale Variablen | `lowerCamelCase` | `menuButton`, `selectedAction`, `entitySuggestions` |
+| Unveränderliche Modulkonstanten | `CONSTANT_CASE` | `CARD_VERSION`, `CARD_TAG_NAME`, `ACTION_PRESETS` |
+| Private Felder/Methoden | `lowerCamelCase_` | `config_`, `openMenu_`, `renderEditor_` |
+
+Drittanbieter-APIs sind **unverändert**: `setConfig`, `getConfigElement`, `getStubConfig`, `hass`, `config-changed`, `items`, `entity_id` und `custom:ha-sam-dropdown-card`. Alte Dashboard-Konfigurationen müssen daher nicht angepasst werden.
+
+Zusätzlich ist `.clang-format` für den Google-basierten Formatierungsstil hinterlegt. `clang-format` formatiert Code, benennt aber **keine Bezeichner automatisch** um.
 
 ```bash
 clang-format -i -style=file dist/ha-sam-dropdown-card.js
 node --check dist/ha-sam-dropdown-card.js
+python3 tests/validate.py
 ```
 
-**Hinweis:** In `00.01.03` wurden zusätzlich umfangreiche CSS-Strings in mehrzeilige Template-Literale umgewandelt. `clang-format` ist über `.clang-format` konfiguriert; der exakte CLI-Abgleich ist weiterhin auf einem Rechner mit installiertem clang-format auszuführen.
+## Beiträge und Berechtigungen
+
+Bugreports und Feedback: [Issues](https://github.com/Salvasohn/ha-sam-dropdown-card/issues). Externe Nutzer können Pull Requests aus Forks vorschlagen, besitzen aber ohne Freigabe keine Schreibrechte.
+
+## Entwicklungsregeln
+
+1. Lineare Historie (Fast-Forward/Rebase; keine Merge-Commits).
+2. `master` nur nach expliziter Freigabe ändern.
+3. Möglichst wenige Commits; ein lauffähiger Stand pro Version.
+4. Jeder lauffähige Commit erhält das zugehörige Git-Tag `xx.xx.xx`, auch außerhalb von `master`.
