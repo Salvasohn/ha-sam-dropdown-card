@@ -1,0 +1,33 @@
+name: Verify and tag versions
+on:
+  push:
+    branches:
+      - 'feature/**'
+permissions:
+  contents: write
+jobs:
+  verify-and-tag:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify JavaScript and version
+        run: |
+          node --check dist/ha-sam-dropdown-card.js
+          python3 tests/validate.py
+      - name: Create annotated tag for functional commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="$(tr -d '\n\r' < VERSION)"
+          [[ "$version" =~ ^[0-9]{2}\.[0-9]{2}\.[0-9]{2}$ ]] || exit 1
+          git fetch origin --tags
+          if git rev-parse -q --verify "refs/tags/$version" >/dev/null; then
+            [[ "$(git rev-list -n1 "$version")" == "$GITHUB_SHA" ]] || { echo "Tag conflict" >&2; exit 1; }
+          else
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git tag -a "$version" "$GITHUB_SHA" -m "SAM Dropdown Card $version"
+            git push origin "refs/tags/$version"
+          fi
