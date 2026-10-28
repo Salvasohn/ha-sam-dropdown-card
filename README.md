@@ -4,7 +4,7 @@ Lovelace-Dropdown-Karte für Home Assistant mit **grafischem Konfigurationsedito
 
 ## Status
 
-**Version 00.01.09 – Feature-Branch.** `master` bleibt ohne ausdrückliche Anweisung unverändert. Lauffähige Commits werden automatisch mit dem jeweiligen Tag im Format `xx.xx.xx` versehen.
+**Version 00.01.10 – Feature-Branch.** `master` bleibt ohne ausdrückliche Anweisung unverändert. Lauffähige Commits werden automatisch mit dem jeweiligen Tag im Format `xx.xx.xx` versehen.
 
 ## Funktionen
 
@@ -42,7 +42,7 @@ items:
 
 Custom Repository: `https://github.com/Salvasohn/ha-sam-dropdown-card` (HACS-Typ **Dashboard**). HACS-Installation erfolgt erst nach freigegebener Veröffentlichung auf `master`.
 
-Für den Test ohne Master-Merge kann das getaggte JavaScript-Artefakt aus `00.01.09` nach `/config/www/ha-sam-dropdown-card.js` kopiert und als Dashboard-Ressource `/local/ha-sam-dropdown-card.js?v=00.01.09` registriert werden.
+Für den Test ohne Master-Merge kann das getaggte JavaScript-Artefakt aus `00.01.10` nach `/config/www/ha-sam-dropdown-card.js` kopiert und als Dashboard-Ressource `/local/ha-sam-dropdown-card.js?v=00.01.10` registriert werden.
 
 ## Google JavaScript Style Guide
 
@@ -91,7 +91,7 @@ In der GUI stehen **Entität** vor **Symbol** und **Icon-Farbe**; Symbol und Far
 
 Das GUI-Feld **Layout** unter **Darstellung** bietet jetzt **Standard-Layout**, **Horizontales Layout** und **Vertikales Layout**. `layout: default` verwendet dieselbe horizontale Darstellung wie bisher. Ältere Karten mit `layout: horizontal` bleiben unverändert. Bei vertikalem Layout wird nur der Dropdown-Auslösebutton umgeordnet; die eigentliche Menüeintragsliste bleibt wie bisher bedienbar. Der vertikale Button erhält mehr Höhe und der Dropdown-Pfeil steht rechts oben. Bestehende Entitätsauswahl, Icons, Farben und die Garage-Defaults bleiben unverändert.
 
-## 00.01.09 – Vereinfachte Aktionen und Standard-Layout
+## 00.01.10 – Vereinfachte Aktionen und Standard-Layout
 
 Für die Button-Darstellung sind `layout: default` (Garage-Standard), `layout: horizontal` und `layout: vertical` möglich. `layout: vertical` setzt das Symbol über den Namen; die beiden anderen Werte platzieren es links daneben.
 
@@ -123,3 +123,13 @@ items:
 ```
 
 Die vorhandenen Eigenschaften `domain`, `service` und `data` werden bei Alt-Konfigurationen weiter unterstützt. `action` ist optional und wird nur gesetzt, wenn die Auswahl im erweiterten Editor geändert wird.
+
+## 00.01.10 – Zwei gleichzeitige Zustandsvorschauen
+
+Die **rechte Vorschau im Home-Assistant-Karteneditor** zeigt jetzt gleichzeitig zwei Bereiche:
+- **Dropdown – geschlossen:** derselbe Button wie auf dem Dashboard, ohne geöffnetes Menü.
+- **Dropdown – geöffnet:** derselbe Button und darunter alle konfigurierten Menüeinträge.
+
+Dabei werden `label`, `icon`, `icon_color`, `layout` und `items` aus der aktuellen Kartenkonfiguration verwendet. Änderungen im Editor aktualisieren **beide** Ansichten. Das aufgeklappte Menü wird im Editor bewusst **inline** dargestellt, damit es nicht abgeschnitten oder vom Karten-Popup verdeckt wird.
+
+**Sicherheit:** Beide Ansichten sind ausschließlich visuelle Vorschauen. Klicken auf die Vorschau löst weder Service-Aufrufe noch Navigation aus. Auf dem **gespeicherten Dashboard** bleibt die Karte unverändert: ein einzelner interaktiver Dropdown-Button, dessen Menü sich bei Klick öffnet. Home Assistant kennzeichnet die Karte im Editor über die Eigenschaft `preview`; es wird keine zusätzliche Kartenkonfiguration benötigt.

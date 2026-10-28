@@ -194,13 +194,77 @@ async function runTests() {
   assert.equal(normalizeCardConfig({}).layout, "default");
   assert.equal(normalizeCardConfig({layout: "vertical"}).layout, "vertical");
 
+
+  // Home Assistant sets .preview=true only in the edit-card preview pane.
+  const previewCard = new SamDropdownCard();
+  previewCard.hass = hass;
+  previewCard.setConfig({
+    label: "Licht",
+    layout: "vertical",
+    icon_color: "blue",
+    items: [
+      {label: "Alle", entity: "light.demo", icon: "mdi:lightbulb-group"},
+      {label: "Temperatur", entity: "sensor.demo", icon: "mdi:thermometer"},
+    ],
+  });
+  assert.equal(previewCard.preview, false);
+  assert.equal(previewCard.shadowRoot.findAll(
+    (node) => node.className === "preview-section",
+  ).length, 0);
+  previewCard.preview = true;
+  assert.equal(previewCard.shadowRoot.findAll(
+    (node) => node.className === "preview-section",
+  ).length, 2);
+  const previewSections = previewCard.shadowRoot.findAll(
+    (node) => node.className === "preview-section",
+  );
+  assert.equal(previewSections[0].findAll(
+    (node) => node.className === "preview-menu",
+  ).length, 0);
+  assert.equal(previewSections[1].findAll(
+    (node) => node.className === "preview-option",
+  ).length, 2);
+  assert.equal(previewCard.shadowRoot.findAll(
+    (node) => node.className === "trigger vertical",
+  ).length, 2);
+  assert.deepEqual(
+    [...previewCard.shadowRoot.findAll(
+      (node) => node.className === "preview-heading",
+    ).map((node) => node.textContent)],
+    ["Dropdown – geschlossen", "Dropdown – geöffnet"],
+  );
+  assert.equal(previewCard.shadowRoot.findAll(
+    (node) => node.className === "preview-option",
+  ).every((node) => !node.listeners.click), true);
+
+  // Changes in configuration refresh both previews; no new YAML properties.
+  previewCard.setConfig({
+    label: "Neue Beschriftung",
+    items: [{label: "Eintrag 1", entity: "light.demo"}],
+  });
+  assert.equal(previewCard.shadowRoot.findAll(
+    (node) => node.className === "preview-option",
+  ).length, 1);
+  const labels = previewCard.shadowRoot.findAll(
+    (node) => node.className === "label",
+  );
+  assert.deepEqual([...labels.map((node) => node.textContent)],
+    ["Neue Beschriftung", "Neue Beschriftung"]);
+  previewCard.preview = false;
+  assert.equal(previewCard.shadowRoot.findAll(
+    (node) => node.className === "preview-section",
+  ).length, 0);
+  assert.equal(previewCard.shadowRoot.findAll(
+    (node) => node.tagName === "button",
+  ).length, 1);
+
   // Existing explicit custom services must not change to generic toggle.
   assert.equal(getActionMode({
     domain: "input_select", service: "select_option",
     entity: "input_select.example",
   }), "call-service");
-  console.log("PASS: auto toggle, more-info, legacy services, URL/navigation, " +
-    "editor state and three layout options");
+  console.log("PASS: actions, editor state, layout, two live-updating " +
+    "non-interactive open/closed card previews");
 }
 
 runTests().catch((error) => {

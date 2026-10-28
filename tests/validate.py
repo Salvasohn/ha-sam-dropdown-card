@@ -41,7 +41,7 @@ assert 'isLocalEcho' in source and 'this.rendered_' in source
 assert 'action.icon_color ?? this.config_.icon_color' in source
 print("PASS: native HA editor and focus regression guard")
 
-assert 'const CARD_VERSION = "00.01.09";' in source
+assert 'const CARD_VERSION = "00.01.10";' in source
 assert "createGarageLightItems()" in source
 assert 'label: "Licht"' in source
 assert 'entity: "light.garage_innen_licht_3"' in source
@@ -74,3 +74,10 @@ assert 'window.open(destination.href, "_blank", "noopener,noreferrer")' in sourc
 assert 'this.renderEditor_(index)' in source
 assert 'action: "auto", entity: ""' in source
 print("PASS: automatic action routing and reduced advanced editor")
+
+assert 'set preview(isPreview)' in source
+assert 'renderDualPreview_(containerElement)' in source
+assert 'Dropdown – geschlossen' in source
+assert 'Dropdown – geöffnet' in source
+assert 'if (this.isPreview_) {' in source
+print("PASS: dual visual previews only in the card editor")

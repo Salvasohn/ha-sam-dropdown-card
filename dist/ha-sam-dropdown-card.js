@@ -1,5 +1,5 @@
 /* SAM Dropdown Card - MIT License */
-const CARD_VERSION = "00.01.09";
+const CARD_VERSION = "00.01.10";
 const CARD_TAG_NAME = "ha-sam-dropdown-card";
 const EDITOR_TAG_NAME = "ha-sam-dropdown-card-editor";
 const CLOSE_MENU_EVENT = "sam-dropdown-close";
@@ -61,6 +61,20 @@ const CARD_STYLES = [
   "  line-height: 1.3; }",
   ".trigger.vertical .chevron { position: absolute; right: 8px; top: 8px; }",
   "button:disabled { opacity: .5; cursor: not-allowed; }",
+  ".preview-group { display: grid; gap: 16px; }",
+  ".preview-section { display: grid; gap: 7px; min-width: 0; }",
+  ".preview-heading { font-size: 12px; font-weight: 600;",
+  "  color: var(--secondary-text-color); }",
+  ".preview-menu { display: grid; gap: 2px; box-sizing: border-box;",
+  "  padding: 5px; max-height: 290px; overflow-y: auto;",
+  "  border: 1px solid var(--divider-color); border-radius: 10px;",
+  "  background: var(--ha-card-background, var(--card-background-color));",
+  "  box-shadow: 0 7px 20px rgba(0, 0, 0, .2); }",
+  ".preview-option { display: flex; align-items: center; gap: 10px;",
+  "  min-height: 42px; padding: 8px; box-sizing: border-box;",
+  "  border-radius: 7px; color: var(--primary-text-color); }",
+  ".preview-empty { color: var(--secondary-text-color); font-size: 12px;",
+  "  padding: 9px; }",
 ].join("\n");
 
 const EDITOR_STYLES = [
@@ -198,6 +212,7 @@ class SamDropdownCard extends HTMLElement {
     super();
     this.attachShadow({ mode: "open" });
     this.config_ = normalizeCardConfig({});
+    this.isPreview_ = false;
     this.hass_ = null;
     this.menu_ = null;
     this.isBusy_ = false;
@@ -259,12 +274,30 @@ class SamDropdownCard extends HTMLElement {
     this.renderCard_();
   }
 
+  // Home Assistant sets preview=true for the card in the visual card editor.
+  // The real dashboard still renders one interactive dropdown only.
+  set preview(isPreview) {
+    const nextPreview = Boolean(isPreview);
+    if (this.isPreview_ === nextPreview) return;
+    this.isPreview_ = nextPreview;
+    this.closeMenu_();
+    this.renderCard_();
+  }
+
+  get preview() {
+    return this.isPreview_;
+  }
+
   set hass(hass) {
     this.hass_ = hass;
     this.updateAvailability_();
   }
 
   getCardSize() {
+    if (this.isPreview_) {
+      // Editor-only comparison: button, expanded menu and two labels.
+      return 5 + Math.min(this.config_.items.length, 6);
+    }
     if (this.config_.layout === "vertical") {
       return this.config_.title ? 3 : 2;
     }
@@ -289,13 +322,30 @@ class SamDropdownCard extends HTMLElement {
       cardElement.append(titleElement);
     }
 
-    const triggerButton = createElement("button");
-    triggerButton.type = "button";
+    if (this.isPreview_) {
+      this.renderDualPreview_(cardElement);
+      shadowRoot.append(cardElement);
+      this.triggerButton_ = null;
+      return;
+    }
+
+    const triggerButton = this.createTriggerButton_(false, false);
+    cardElement.append(triggerButton);
+    shadowRoot.append(cardElement);
+    this.triggerButton_ = triggerButton;
+    this.updateAvailability_();
+  }
+
+  createTriggerButton_(isStaticPreview, isExpanded) {
+    // Render the same trigger in both previews and on the live dashboard.
+    // The preview uses a non-interactive div and never calls HA services.
+    const triggerButton = createElement(isStaticPreview ? "div" : "button");
+    if (!isStaticPreview) triggerButton.type = "button";
     triggerButton.className = this.config_.layout === "vertical"
       ? "trigger vertical"
       : "trigger";
     triggerButton.setAttribute("aria-haspopup", "menu");
-    triggerButton.setAttribute("aria-expanded", "false");
+    triggerButton.setAttribute("aria-expanded", String(isExpanded));
     triggerButton.append(createIcon(this.config_.icon, this.config_.icon_color));
 
     const labelElement = createElement("span", this.config_.label);
@@ -303,19 +353,59 @@ class SamDropdownCard extends HTMLElement {
     const chevronIcon = createIcon("mdi:chevron-down");
     chevronIcon.className = "chevron";
     triggerButton.append(labelElement, chevronIcon);
-    triggerButton.addEventListener("click", (event) => {
-      event.preventDefault();
-      if (this.menu_) {
-        this.closeMenu_();
-      } else {
-        this.openMenu_();
-      }
-    });
 
-    cardElement.append(triggerButton);
-    shadowRoot.append(cardElement);
-    this.triggerButton_ = triggerButton;
-    this.updateAvailability_();
+    if (!isStaticPreview) {
+      triggerButton.addEventListener("click", (event) => {
+        event.preventDefault();
+        if (this.menu_) {
+          this.closeMenu_();
+        } else {
+          this.openMenu_();
+        }
+      });
+    }
+    return triggerButton;
+  }
+
+  renderDualPreview_(containerElement) {
+    const previewGroup = createElement("div");
+    previewGroup.className = "preview-group";
+
+    for (const [heading, isExpanded] of [
+      ["Dropdown – geschlossen", false],
+      ["Dropdown – geöffnet", true],
+    ]) {
+      const section = createElement("section");
+      section.className = "preview-section";
+      const title = createElement("div", heading);
+      title.className = "preview-heading";
+      section.append(title, this.createTriggerButton_(true, isExpanded));
+
+      if (isExpanded) {
+        const menu = createElement("div");
+        menu.className = "preview-menu";
+        menu.setAttribute("role", "presentation");
+
+        if (!this.config_.items.length) {
+          const emptyMessage = createElement("div", "Keine Menüeinträge vorhanden");
+          emptyMessage.className = "preview-empty";
+          menu.append(emptyMessage);
+        }
+        for (const item of this.config_.items) {
+          const option = createElement("div");
+          option.className = "preview-option";
+          option.append(
+            createIcon(item.icon, item.icon_color ?? this.config_.icon_color),
+            createElement("span", item.label || "Aktion"),
+          );
+          // The open-menu preview is visual only; it has no click listeners.
+          menu.append(option);
+        }
+        section.append(menu);
+      }
+      previewGroup.append(section);
+    }
+    containerElement.append(previewGroup);
   }
 
   updateAvailability_() {
