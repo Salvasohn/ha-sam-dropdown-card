@@ -38,7 +38,7 @@ assert 'createElement("ha-form")' in source
 assert 'createElement("ha-selector")' in source
 assert 'ui_color: {default_color: "state", include_state: true, include_none: true}' in source
 assert 'isLocalEcho' in source and 'this.rendered_' in source
-assert 'action.icon_color ?? this.config_.icon_color' in source
+assert 'getItemIconColor(action, this.config_.icon_color)' in source
 print("PASS: native HA editor and focus regression guard")
 
 assert 'const CARD_VERSION = "00.01.13";' in source
@@ -89,7 +89,7 @@ assert 'maxWidth: "calc(100vw - 8px)"' in source
 print("PASS: intrinsic-width, right-aligned popup and editor preview")
 
 assert "function isEntityActive(action, hass)" in source
-assert "function setStatusIcon(icon, active, colorName)" in source
+assert "function setStatusIcon(icon, active, colorName, action, hass)" in source
 assert "this.updateIconStates_();" in source
 assert "this.previewItemIcons_" in source
 assert "this.menuItemIcons_" in source
