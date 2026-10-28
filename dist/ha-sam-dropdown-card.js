@@ -1,5 +1,5 @@
 /* SAM Dropdown Card - MIT License */
-const CARD_VERSION = "00.01.04";
+const CARD_VERSION = "00.01.05";
 const CARD_TAG_NAME = "ha-sam-dropdown-card";
 const EDITOR_TAG_NAME = "ha-sam-dropdown-card-editor";
 const CLOSE_MENU_EVENT = "sam-dropdown-close";

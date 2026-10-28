@@ -4,7 +4,7 @@ Lovelace-Dropdown-Karte für Home Assistant mit **grafischem Konfigurationsedito
 
 ## Status
 
-**Version 00.01.04 – Feature-Branch.** `master` bleibt ohne ausdrückliche Anweisung unverändert. Lauffähige Commits werden automatisch mit dem jeweiligen Tag im Format `xx.xx.xx` versehen.
+**Version 00.01.05 – Feature-Branch.** `master` bleibt ohne ausdrückliche Anweisung unverändert. Lauffähige Commits werden automatisch mit dem jeweiligen Tag im Format `xx.xx.xx` versehen.
 
 ## Funktionen
 
@@ -40,7 +40,7 @@ items:
 
 Custom Repository: `https://github.com/Salvasohn/ha-sam-dropdown-card` (HACS-Typ **Dashboard**). HACS-Installation erfolgt erst nach freigegebener Veröffentlichung auf `master`.
 
-Für den Test ohne Master-Merge kann das getaggte JavaScript-Artefakt aus `00.01.04` nach `/config/www/ha-sam-dropdown-card.js` kopiert und als Dashboard-Ressource `/local/ha-sam-dropdown-card.js?v=00.01.04` registriert werden.
+Für den Test ohne Master-Merge kann das getaggte JavaScript-Artefakt aus `00.01.05` nach `/config/www/ha-sam-dropdown-card.js` kopiert und als Dashboard-Ressource `/local/ha-sam-dropdown-card.js?v=00.01.05` registriert werden.
 
 ## Google JavaScript Style Guide
 
