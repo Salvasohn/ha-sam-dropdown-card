@@ -1,5 +1,5 @@
 /* SAM Dropdown Card - MIT License */
-const CARD_VERSION = "00.01.07";
+const CARD_VERSION = "00.01.08";
 const CARD_TAG_NAME = "ha-sam-dropdown-card";
 const EDITOR_TAG_NAME = "ha-sam-dropdown-card-editor";
 const CLOSE_MENU_EVENT = "sam-dropdown-close";
@@ -25,9 +25,15 @@ const CARD_STYLES = [
   "  min-height: 45px; padding: 8px 12px; background: rgba(127,127,127,.06);",
   "  border: 1px solid var(--divider-color); border-radius: 9px;",
   "  color: inherit; font: inherit; cursor: pointer; touch-action: manipulation;",
-  "  text-align: left; }",
-  ".label { flex: 1; overflow: hidden; text-overflow: ellipsis;",
+  "  text-align: left; position: relative; }",
+  ".label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis;",
   "  white-space: nowrap; }",
+  ".trigger.vertical { flex-direction: column; justify-content: center;",
+  "  min-height: 84px; gap: 6px; padding: 12px 28px; text-align: center; }",
+  ".trigger.vertical .label { flex: none; width: 100%; text-align: center;",
+  "  white-space: normal; overflow: visible; overflow-wrap: anywhere;",
+  "  line-height: 1.3; }",
+  ".trigger.vertical .chevron { position: absolute; right: 8px; top: 8px; }",
   "button:disabled { opacity: .5; cursor: not-allowed; }",
 ].join("\n");
 
@@ -82,6 +88,7 @@ function normalizeCardConfig(config) {
     label: sourceConfig.label ?? "Licht",
     icon: sourceConfig.icon ?? "mdi:lightbulb-group",
     icon_color: sourceConfig.icon_color ?? "primary",
+    layout: sourceConfig.layout === "vertical" ? "vertical" : "horizontal",
     items: Array.isArray(sourceConfig.items)
       ? sourceConfig.items.map((item) => ({...item}))
       : createGarageLightItems(),
@@ -203,6 +210,7 @@ class SamDropdownCard extends HTMLElement {
       label: "Licht",
       icon: "mdi:lightbulb-group",
       icon_color: "primary",
+      layout: "horizontal",
       items: createGarageLightItems(),
     };
   }
@@ -219,6 +227,9 @@ class SamDropdownCard extends HTMLElement {
   }
 
   getCardSize() {
+    if (this.config_.layout === "vertical") {
+      return this.config_.title ? 3 : 2;
+    }
     return this.config_.title ? 2 : 1;
   }
 
@@ -242,14 +253,18 @@ class SamDropdownCard extends HTMLElement {
 
     const triggerButton = createElement("button");
     triggerButton.type = "button";
-    triggerButton.className = "trigger";
+    triggerButton.className = this.config_.layout === "vertical"
+      ? "trigger vertical"
+      : "trigger";
     triggerButton.setAttribute("aria-haspopup", "menu");
     triggerButton.setAttribute("aria-expanded", "false");
     triggerButton.append(createIcon(this.config_.icon, this.config_.icon_color));
 
     const labelElement = createElement("span", this.config_.label);
     labelElement.className = "label";
-    triggerButton.append(labelElement, createIcon("mdi:chevron-down"));
+    const chevronIcon = createIcon("mdi:chevron-down");
+    chevronIcon.className = "chevron";
+    triggerButton.append(labelElement, chevronIcon);
     triggerButton.addEventListener("click", (event) => {
       event.preventDefault();
       if (this.menu_) {
@@ -495,19 +510,27 @@ class SamDropdownEditor extends HTMLElement {
     form.schema = [
       {name: "title", selector: {text: {}}},
       {name: "label", selector: {text: {}}},
+      {name: "layout", selector: {select: {
+        mode: "dropdown",
+        options: [
+          {value: "horizontal", label: "Horizontal – Symbol neben Name"},
+          {value: "vertical", label: "Vertikal – Symbol über Name"},
+        ],
+      }}},
     ];
     form.data = {
       title: this.config_.title,
       label: this.config_.label,
+      layout: this.config_.layout,
     };
     const labels = {
-      title: "Titel (optional)", label: "Button-Text",
+      title: "Titel (optional)", label: "Button-Text", layout: "Layout",
     };
     form.computeLabel = (schema) => labels[schema.name] || schema.name;
     form.addEventListener("value-changed", (event) => {
       event.stopPropagation();
       const newValues = event.detail.value || {};
-      for (const key of ["title", "label"]) {
+      for (const key of ["title", "label", "layout"]) {
         if (Object.hasOwn(newValues, key)) this.config_[key] = newValues[key];
       }
       this.dispatchConfigChanged_();

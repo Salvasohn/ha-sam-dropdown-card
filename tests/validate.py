@@ -41,7 +41,7 @@ assert 'isLocalEcho' in source and 'this.rendered_' in source
 assert 'action.icon_color ?? this.config_.icon_color' in source
 print("PASS: native HA editor and focus regression guard")
 
-assert 'const CARD_VERSION = "00.01.07";' in source
+assert 'const CARD_VERSION = "00.01.08";' in source
 assert "createGarageLightItems()" in source
 assert 'label: "Licht"' in source
 assert 'entity: "light.garage_innen_licht_3"' in source
@@ -50,3 +50,16 @@ assert 'if (isLocalEcho && this.rendered_)' in source
 assert 'this.config_ = incomingConfig' in source
 assert source.index('this.addSelector_(section, "Entität"') < source.index('const iconRow = createElement("div")')
 print("PASS: garage defaults, two-column icon layout, stable editor references")
+
+# Horizontal is backward compatible; both layouts must be available in the GUI.
+assert 'layout: sourceConfig.layout === "vertical" ? "vertical" : "horizontal"' in source
+assert 'layout: "horizontal"' in source
+assert '{name: "layout", selector: {select: {' in source
+assert '{value: "horizontal", label: "Horizontal – Symbol neben Name"}' in source
+assert '{value: "vertical", label: "Vertikal – Symbol über Name"}' in source
+assert 'triggerButton.className = this.config_.layout === "vertical"' in source
+assert '".trigger.vertical { flex-direction: column;' in source
+assert 'chevronIcon.className = "chevron";' in source
+assert 'for (const key of ["title", "label", "layout"])' in source
+assert 'layout: vertical' in (repo_root / "README.md").read_text()
+print("PASS: horizontal/vertical layout selector, rendering, defaults and persistence")
