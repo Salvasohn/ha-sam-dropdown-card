@@ -93,6 +93,9 @@ Das GUI-Feld **Layout** unter **Darstellung** bietet jetzt **Standard-Layout**, 
 
 ## 00.01.09 – Vereinfachte Aktionen und Standard-Layout
 
+Für die Button-Darstellung sind `layout: default` (Garage-Standard), `layout: horizontal` und `layout: vertical` möglich. `layout: vertical` setzt das Symbol über den Namen; die beiden anderen Werte platzieren es links daneben.
+
+
 - Layoutauswahl: **Standard-Layout**, **Horizontales Layout**, **Vertikales Layout**. Standard-Layout und horizontales Layout zeigen Symbol und Beschriftung nebeneinander.
 - Unter einem Menüeintrag sind **Bezeichnung**, **Entität**, **Symbol** und **Icon-Farbe** direkt sichtbar. **Aktion** liegt ausschließlich unter **Erweiterte Einstellungen**.
 - **Standard (automatisch)** schaltet `light`, `switch`, `input_boolean`, `fan` und `automation` mit `toggle`. Nicht umschaltbare Entitätsarten öffnen die Home-Assistant-Detailansicht (`more-info`), statt einen ungeeigneten Service aufzurufen. Andere Domänen wie `cover` werden **nicht** automatisch betätigt.
