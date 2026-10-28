@@ -258,13 +258,54 @@ async function runTests() {
     (node) => node.tagName === "button",
   ).length, 1);
 
+
+  // Popup uses content width, aligns to the parent's right edge, and clamps
+  // against the viewport rather than using the parent card's full width.
+  environment.window.innerWidth = 800;
+  environment.window.innerHeight = 600;
+  const positionedCard = new SamDropdownCard();
+  positionedCard.triggerButton_ = {
+    getBoundingClientRect: () => ({
+      left: 120, right: 420, top: 180, bottom: 220, width: 300,
+    }),
+  };
+  positionedCard.menu_ = {
+    style: {},
+    scrollHeight: 180,
+    getBoundingClientRect: () => ({width: 190}),
+  };
+  positionedCard.positionMenu_();
+  assert.equal(positionedCard.menu_.style.width, "max-content");
+  assert.equal(positionedCard.menu_.style.maxWidth, "792px");
+  assert.equal(positionedCard.menu_.style.left, "230px");
+
+  // A menu wider than the remaining space must be kept on-screen.
+  positionedCard.triggerButton_.getBoundingClientRect = () => ({
+    left: 5, right: 90, top: 180, bottom: 220, width: 85,
+  });
+  positionedCard.positionMenu_();
+  assert.equal(positionedCard.menu_.style.left, "4px");
+
+  positionedCard.triggerButton_.getBoundingClientRect = () => ({
+    left: 680, right: 790, top: 180, bottom: 220, width: 110,
+  });
+  positionedCard.positionMenu_();
+  assert.equal(positionedCard.menu_.style.left, "600px");
+
+  // In preview the menu is right-aligned and intrinsically sized by CSS.
+  const previewStyles = previewCard.shadowRoot.findAll(
+    (node) => node.tagName === "style",
+  )[0].textContent;
+  assert.ok(previewStyles.includes("justify-self: end; width: max-content;"));
+  assert.ok(previewStyles.includes("min-width: 140px; max-width: 100%;"));
+
   // Existing explicit custom services must not change to generic toggle.
   assert.equal(getActionMode({
     domain: "input_select", service: "select_option",
     entity: "input_select.example",
   }), "call-service");
   console.log("PASS: actions, editor state, layout, two live-updating " +
-    "non-interactive open/closed card previews");
+    "open/closed previews and content-sized right-aligned popup");
 }
 
 runTests().catch((error) => {

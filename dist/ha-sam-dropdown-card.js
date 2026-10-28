@@ -1,5 +1,5 @@
 /* SAM Dropdown Card - MIT License */
-const CARD_VERSION = "00.01.10";
+const CARD_VERSION = "00.01.11";
 const CARD_TAG_NAME = "ha-sam-dropdown-card";
 const EDITOR_TAG_NAME = "ha-sam-dropdown-card-editor";
 const CLOSE_MENU_EVENT = "sam-dropdown-close";
@@ -66,13 +66,17 @@ const CARD_STYLES = [
   ".preview-heading { font-size: 12px; font-weight: 600;",
   "  color: var(--secondary-text-color); }",
   ".preview-menu { display: grid; gap: 2px; box-sizing: border-box;",
-  "  padding: 5px; max-height: 290px; overflow-y: auto;",
+  "  justify-self: end; width: max-content; min-width: 140px; max-width: 100%;",
+  "  padding: 5px; max-height: 290px; overflow-y: auto; overflow-x: hidden;",
   "  border: 1px solid var(--divider-color); border-radius: 10px;",
   "  background: var(--ha-card-background, var(--card-background-color));",
   "  box-shadow: 0 7px 20px rgba(0, 0, 0, .2); }",
   ".preview-option { display: flex; align-items: center; gap: 10px;",
   "  min-height: 42px; padding: 8px; box-sizing: border-box;",
-  "  border-radius: 7px; color: var(--primary-text-color); }",
+  "  border-radius: 7px; color: var(--primary-text-color);",
+  "  white-space: nowrap; }",
+  ".preview-option span { min-width: 0; overflow: hidden;",
+  "  text-overflow: ellipsis; }",
   ".preview-empty { color: var(--secondary-text-color); font-size: 12px;",
   "  padding: 9px; }",
 ].join("\n");
@@ -487,6 +491,7 @@ class SamDropdownCard extends HTMLElement {
       gap: "10px",
       width: "100%",
       minHeight: "42px",
+      whiteSpace: "nowrap",
       padding: "8px",
       border: "0",
       borderRadius: "7px",
@@ -497,9 +502,15 @@ class SamDropdownCard extends HTMLElement {
       cursor: "pointer",
       touchAction: "manipulation",
     });
+    const menuLabel = createElement("span", action.label || "Aktion");
+    Object.assign(menuLabel.style, {
+      minWidth: "0",
+      overflow: "hidden",
+      textOverflow: "ellipsis",
+    });
     menuButton.append(
       createIcon(action.icon, action.icon_color ?? this.config_.icon_color),
-      createElement("span", action.label || "Aktion"),
+      menuLabel,
     );
     menuButton.onmouseenter = () => {
       menuButton.style.background = "rgba(68,115,158,.23)";
@@ -527,6 +538,10 @@ class SamDropdownCard extends HTMLElement {
       zIndex: "2147483640",
       padding: "5px",
       boxSizing: "border-box",
+      width: "max-content",
+      minWidth: "140px",
+      maxWidth: "calc(100vw - 8px)",
+      overflowX: "hidden",
       borderRadius: "10px",
       border: "1px solid var(--divider-color)",
       background: "var(--ha-card-background,var(--card-background-color,#262626))",
@@ -558,17 +573,26 @@ class SamDropdownCard extends HTMLElement {
       return;
     }
     const triggerBounds = this.triggerButton_.getBoundingClientRect();
-    const menuWidth = Math.min(Math.max(195, triggerBounds.width), window.innerWidth - 8);
+    const screenMargin = 4;
+    const maxMenuWidth = Math.max(0, window.innerWidth - screenMargin * 2);
+
+    // Let the longest entry determine the width, rather than the parent card.
+    // The maximum width ensures that long labels stay inside the viewport.
+    this.menu_.style.width = "max-content";
+    this.menu_.style.maxWidth = maxMenuWidth + "px";
+    const menuWidth = Math.min(
+      this.menu_.getBoundingClientRect().width, maxMenuWidth,
+    );
+    const rightAlignedLeft = triggerBounds.right - menuWidth;
+    this.menu_.style.left = Math.max(
+      screenMargin,
+      Math.min(rightAlignedLeft, window.innerWidth - menuWidth - screenMargin),
+    ) + "px";
+
     const availableBelow = window.innerHeight - triggerBounds.bottom;
     const preferredHeight = Math.min(this.menu_.scrollHeight, window.innerHeight - 16);
     const openAbove = availableBelow < preferredHeight && triggerBounds.top > availableBelow;
     const availableHeight = openAbove ? triggerBounds.top : availableBelow;
-
-    this.menu_.style.width = menuWidth + "px";
-    this.menu_.style.left = Math.max(
-      4,
-      Math.min(triggerBounds.left, window.innerWidth - menuWidth - 4),
-    ) + "px";
     this.menu_.style.maxHeight = Math.max(42, availableHeight - 8) + "px";
     this.menu_.style.top = (
       openAbove
