@@ -1,5 +1,5 @@
 /* SAM Dropdown Card - MIT License */
-const CARD_VERSION = "00.01.05";
+const CARD_VERSION = "00.01.06";
 const CARD_TAG_NAME = "ha-sam-dropdown-card";
 const EDITOR_TAG_NAME = "ha-sam-dropdown-card-editor";
 const CLOSE_MENU_EVENT = "sam-dropdown-close";
@@ -56,14 +56,34 @@ const EDITOR_STYLES = [
 function normalizeCardConfig(config) {
   const sourceConfig = config || {};
   return {
+    ...sourceConfig,
     type: "custom:" + CARD_TAG_NAME,
-    title: sourceConfig.title || "",
-    label: sourceConfig.label || "Aktionen",
-    icon: sourceConfig.icon || "mdi:menu-down",
+    title: sourceConfig.title ?? "",
+    label: sourceConfig.label ?? "Aktionen",
+    icon: sourceConfig.icon ?? "mdi:menu-down",
+    icon_color: sourceConfig.icon_color ?? "primary",
     items: Array.isArray(sourceConfig.items)
-      ? sourceConfig.items.map((item) => ({ ...item }))
-      : [],
+      ? sourceConfig.items.map((item) => ({...item})) : [],
   };
+}
+
+const ICON_COLOR_NAMES = new Set([
+  "red", "pink", "purple", "deep-purple", "indigo", "blue", "light-blue",
+  "cyan", "teal", "green", "light-green", "lime", "yellow", "amber",
+  "orange", "deep-orange", "brown", "grey", "blue-grey",
+]);
+
+function getIconColor(colorName) {
+  if (colorName === "primary") return "var(--primary-color)";
+  if (colorName === "accent") return "var(--accent-color)";
+  if (colorName === "disabled") return "var(--disabled-text-color)";
+  if (colorName === "none" || !colorName) {
+    return "var(--state-icon-color, #44739e)";
+  }
+  if (ICON_COLOR_NAMES.has(colorName)) {
+    return "var(--" + colorName + "-color, var(--primary-color))";
+  }
+  return "var(--primary-color)";
 }
 
 function createElement(tagName, textContent) {
@@ -74,10 +94,11 @@ function createElement(tagName, textContent) {
   return element;
 }
 
-function createIcon(iconName) {
+function createIcon(iconName, colorName) {
   const iconElement = createElement("ha-icon");
   iconElement.setAttribute("icon", iconName || "mdi:gesture-tap-button");
   iconElement.style.setProperty("--mdc-icon-size", "20px");
+  if (colorName) iconElement.style.color = getIconColor(colorName);
   return iconElement;
 }
 
@@ -198,7 +219,7 @@ class SamDropdownCard extends HTMLElement {
     triggerButton.className = "trigger";
     triggerButton.setAttribute("aria-haspopup", "menu");
     triggerButton.setAttribute("aria-expanded", "false");
-    triggerButton.append(createIcon(this.config_.icon));
+    triggerButton.append(createIcon(this.config_.icon, this.config_.icon_color));
 
     const labelElement = createElement("span", this.config_.label);
     labelElement.className = "label";
@@ -274,7 +295,10 @@ class SamDropdownCard extends HTMLElement {
       cursor: "pointer",
       touchAction: "manipulation",
     });
-    menuButton.append(createIcon(action.icon), createElement("span", action.label || "Aktion"));
+    menuButton.append(
+      createIcon(action.icon, action.icon_color ?? this.config_.icon_color),
+      createElement("span", action.label || "Aktion"),
+    );
     menuButton.onmouseenter = () => {
       menuButton.style.background = "rgba(68,115,158,.23)";
     };
@@ -370,218 +394,235 @@ class SamDropdownCard extends HTMLElement {
 class SamDropdownEditor extends HTMLElement {
   constructor() {
     super();
-    this.attachShadow({ mode: "open" });
+    this.attachShadow({mode: "open"});
     this.config_ = null;
     this.hass_ = null;
+    this.rendered_ = false;
+    this.lastEmittedConfig_ = null;
   }
 
   setConfig(config) {
-    this.config_ = normalizeCardConfig(config);
-    this.renderEditor_();
+    const incomingConfig = normalizeCardConfig(config);
+    const isLocalEcho = JSON.stringify(incomingConfig) === this.lastEmittedConfig_;
+    this.config_ = incomingConfig;
+    // The HA editor echoes config-changed back via setConfig.
+    // Recreating input nodes on each keystroke would lose focus.
+    if (!this.rendered_ || !isLocalEcho) this.renderEditor_();
   }
 
   set hass(hass) {
-    const shouldRender = !this.hass_ && this.config_;
     this.hass_ = hass;
-    if (shouldRender) {
-      this.renderEditor_();
+    for (const element of this.shadowRoot.querySelectorAll("ha-form, ha-selector")) {
+      element.hass = hass;
     }
   }
 
   dispatchConfigChanged_() {
+    const config = JSON.parse(JSON.stringify(this.config_));
+    this.lastEmittedConfig_ = JSON.stringify(config);
     this.dispatchEvent(new CustomEvent("config-changed", {
-      detail: { config: JSON.parse(JSON.stringify(this.config_)) },
-      bubbles: true,
-      composed: true,
+      detail: {config}, bubbles: true, composed: true,
     }));
   }
 
-  addTextInput_(parentElement, fieldLabel, fieldValue, onChange) {
-    const labelElement = createElement("label");
-    labelElement.append(createElement("span", fieldLabel));
-
-    const inputElement = createElement("input");
-    inputElement.value = fieldValue ?? "";
-    inputElement.addEventListener("input", () => {
-      onChange(inputElement.value);
+  addTextInput_(parent, labelText, value, onChange) {
+    const label = createElement("label");
+    label.append(createElement("span", labelText));
+    const input = createElement("input");
+    input.value = value ?? "";
+    input.addEventListener("input", () => {
+      onChange(input.value);
       this.dispatchConfigChanged_();
     });
-    labelElement.append(inputElement);
-    parentElement.append(labelElement);
-    return inputElement;
+    label.append(input);
+    parent.append(label);
+    return input;
   }
 
-  appendActionEditor_(containerElement, action, actionIndex) {
-    const actionSection = createElement("section");
-    const actionHeader = createElement("header");
-    actionHeader.append(createElement("b", action.label || "Eintrag " + (actionIndex + 1)));
+  addSelector_(parent, label, value, selectorConfig, onChange) {
+    const selector = createElement("ha-selector");
+    selector.hass = this.hass_;
+    selector.selector = selectorConfig;
+    selector.value = value;
+    selector.label = label;
+    selector.required = false;
+    selector.addEventListener("value-changed", (event) => {
+      event.stopPropagation();
+      onChange(event.detail.value);
+      this.dispatchConfigChanged_();
+    });
+    parent.append(selector);
+    return selector;
+  }
 
-    const moveControls = createElement("div");
-    moveControls.className = "tools";
-    const controls = [["↑", -1], ["↓", 1], ["×", 0]];
-    for (const [controlLabel, direction] of controls) {
-      const controlButton = createElement("button", controlLabel);
-      if (direction !== 0) {
-        const targetIndex = actionIndex + direction;
-        controlButton.disabled = targetIndex < 0 || targetIndex >= this.config_.items.length;
+  createAppearanceForm_() {
+    const form = createElement("ha-form");
+    form.hass = this.hass_;
+    form.schema = [
+      {name: "title", selector: {text: {}}},
+      {name: "label", selector: {text: {}}},
+      {name: "icon", selector: {icon: {}}},
+      {name: "icon_color", selector: {
+        ui_color: {default_color: "primary", include_none: true},
+      }},
+    ];
+    form.data = {
+      title: this.config_.title,
+      label: this.config_.label,
+      icon: this.config_.icon,
+      icon_color: this.config_.icon_color,
+    };
+    const labels = {
+      title: "Titel (optional)", label: "Button-Text",
+      icon: "Symbol", icon_color: "Icon-Farbe",
+    };
+    form.computeLabel = (schema) => labels[schema.name] || schema.name;
+    form.addEventListener("value-changed", (event) => {
+      event.stopPropagation();
+      const newValues = event.detail.value || {};
+      for (const key of ["title", "label", "icon", "icon_color"]) {
+        if (Object.hasOwn(newValues, key)) this.config_[key] = newValues[key];
       }
-      controlButton.addEventListener("click", () => {
+      this.dispatchConfigChanged_();
+    });
+    return form;
+  }
+
+  appendActionEditor_(container, action, index) {
+    const section = createElement("section");
+    const header = createElement("header");
+    header.append(createElement("b", action.label || "Eintrag " + (index + 1)));
+    const tools = createElement("div");
+    tools.className = "tools";
+    for (const [label, direction] of [["↑", -1], ["↓", 1], ["×", 0]]) {
+      const control = createElement("button", label);
+      if (direction) {
+        control.disabled = index + direction < 0 ||
+          index + direction >= this.config_.items.length;
+      }
+      control.addEventListener("click", () => {
         if (direction === 0) {
-          this.config_.items.splice(actionIndex, 1);
+          this.config_.items.splice(index, 1);
         } else {
-          const targetIndex = actionIndex + direction;
-          [this.config_.items[actionIndex], this.config_.items[targetIndex]] = [
-            this.config_.items[targetIndex],
-            this.config_.items[actionIndex],
-          ];
+          const target = index + direction;
+          [this.config_.items[index], this.config_.items[target]] =
+            [this.config_.items[target], this.config_.items[index]];
         }
         this.dispatchConfigChanged_();
         this.renderEditor_();
       });
-      moveControls.append(controlButton);
+      tools.append(control);
     }
-    actionHeader.append(moveControls);
-    actionSection.append(actionHeader);
+    header.append(tools);
+    section.append(header);
 
-    this.addTextInput_(actionSection, "Bezeichnung", action.label, (value) => {
+    this.addTextInput_(section, "Bezeichnung", action.label, (value) => {
       action.label = value;
     });
-    this.addTextInput_(actionSection, "Icon (MDI)", action.icon, (value) => {
-      action.icon = value;
-    });
+    this.addSelector_(section, "Symbol", action.icon || "",
+      {icon: {}}, (value) => { action.icon = value; });
+    this.addSelector_(section, "Icon-Farbe", action.icon_color ?? "primary",
+      {ui_color: {default_color: "primary", include_none: true}},
+      (value) => { action.icon_color = value; });
 
     const actionLabel = createElement("label");
     actionLabel.append(createElement("span", "Aktion"));
-    const actionSelector = createElement("select");
+    const select = createElement("select");
     const selectedAction = (action.domain || "") + "." + (action.service || "");
-    for (const [presetValue, presetName] of [
-      ...ACTION_PRESETS,
-      ["custom", "Eigene Aktion"],
+    for (const [value, label] of [
+      ...ACTION_PRESETS, ["custom", "Eigene Aktion"],
     ]) {
-      const optionElement = createElement("option", presetName);
-      optionElement.value = presetValue;
-      actionSelector.append(optionElement);
+      const option = createElement("option", label);
+      option.value = value;
+      select.append(option);
     }
-    actionSelector.value = ACTION_PRESETS.some(([preset]) => preset === selectedAction)
-      ? selectedAction
-      : "custom";
-    actionSelector.addEventListener("change", () => {
-      if (actionSelector.value === "custom") {
+    select.value = ACTION_PRESETS.some(([preset]) => preset === selectedAction)
+      ? selectedAction : "custom";
+    select.addEventListener("change", () => {
+      if (select.value === "custom") {
         action.domain = "";
         action.service = "";
       } else {
-        [action.domain, action.service] = actionSelector.value.split(".");
+        [action.domain, action.service] = select.value.split(".");
       }
       this.dispatchConfigChanged_();
+      // Adding/removing custom service inputs is a structural change.
       this.renderEditor_();
     });
-    actionLabel.append(actionSelector);
-    actionSection.append(actionLabel);
-
-    if (actionSelector.value === "custom") {
-      this.addTextInput_(actionSection, "Domain", action.domain, (value) => {
+    actionLabel.append(select);
+    section.append(actionLabel);
+    if (select.value === "custom") {
+      this.addTextInput_(section, "Domain", action.domain, (value) => {
         action.domain = value;
       });
-      this.addTextInput_(actionSection, "Service", action.service, (value) => {
+      this.addTextInput_(section, "Service", action.service, (value) => {
         action.service = value;
       });
     }
 
-    const entityInput = this.addTextInput_(
-      actionSection,
-      "Entität",
-      action.entity,
-      (value) => { action.entity = value; },
-    );
-    entityInput.setAttribute("list", "sam-entity-suggestions");
+    this.addSelector_(section, "Entität", action.entity || "",
+      {entity: {}}, (value) => { action.entity = value; });
 
-    const advancedSection = createElement("details");
-    advancedSection.append(createElement("summary", "Erweiterte Einstellungen"));
-    this.addTextInput_(
-      advancedSection,
-      "Zusatzdaten (JSON)",
-      typeof action.data === "string" ? action.data : JSON.stringify(action.data || {}),
-      (value) => { action.data = value; },
-    );
-    this.addTextInput_(advancedSection, "Bestätigungstext", action.confirm, (value) => {
+    const advanced = createElement("details");
+    advanced.append(createElement("summary", "Erweiterte Einstellungen"));
+    this.addTextInput_(advanced, "Zusatzdaten (JSON)",
+      typeof action.data === "string"
+        ? action.data : JSON.stringify(action.data || {}),
+      (value) => { action.data = value; });
+    this.addTextInput_(advanced, "Bestätigungstext", action.confirm, (value) => {
       action.confirm = value;
     });
-    this.addTextInput_(advancedSection, "Freigabe-Entität", action.enabled_entity, (value) => {
-      action.enabled_entity = value;
-    });
-
-    const disabledLabel = createElement("label");
-    disabledLabel.append(createElement("span", "Eintrag deaktivieren"));
-    const disabledCheckbox = createElement("input");
-    disabledCheckbox.type = "checkbox";
-    disabledCheckbox.checked = !!action.disabled;
-    disabledCheckbox.addEventListener("change", () => {
-      action.disabled = disabledCheckbox.checked;
+    this.addSelector_(advanced, "Freigabe-Entität", action.enabled_entity || "",
+      {entity: {}}, (value) => { action.enabled_entity = value; });
+    const checkLabel = createElement("label");
+    checkLabel.append(createElement("span", "Eintrag deaktivieren"));
+    const checkbox = createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.checked = !!action.disabled;
+    checkbox.addEventListener("change", () => {
+      action.disabled = checkbox.checked;
       this.dispatchConfigChanged_();
     });
-    disabledLabel.append(disabledCheckbox);
-    advancedSection.append(disabledLabel);
-    actionSection.append(advancedSection);
-    containerElement.append(actionSection);
+    checkLabel.append(checkbox);
+    advanced.append(checkLabel);
+    section.append(advanced);
+    container.append(section);
   }
 
   renderEditor_() {
-    if (!this.config_) {
-      return;
-    }
-    const shadowRoot = this.shadowRoot;
-    shadowRoot.innerHTML = "";
-    shadowRoot.append(createElement("style", EDITOR_STYLES));
+    if (!this.config_) return;
+    const root = this.shadowRoot;
+    root.innerHTML = "";
+    root.append(createElement("style", EDITOR_STYLES));
+    const container = createElement("div");
+    container.className = "root";
+    root.append(container);
+    container.append(createElement("h4", "Darstellung"));
+    container.append(this.createAppearanceForm_());
 
-    const editorRoot = createElement("div");
-    editorRoot.className = "root";
-    shadowRoot.append(editorRoot);
+    container.append(createElement(
+      "h4", "Dropdown-Einträge (" + this.config_.items.length + ")",
+    ));
+    const hint = createElement("p",
+      "Menüeinträge führen HA-Aktionen aus. " +
+      "Für Maschinen und Tore bitte eine Bestätigung konfigurieren.");
+    hint.className = "hint";
+    container.append(hint);
 
-    editorRoot.append(createElement("h4", "Darstellung"));
-    for (const [fieldLabel, propertyName] of [
-      ["Titel (optional)", "title"],
-      ["Button-Text", "label"],
-      ["Button-Icon (MDI)", "icon"],
-    ]) {
-      this.addTextInput_(editorRoot, fieldLabel, this.config_[propertyName], (value) => {
-        this.config_[propertyName] = value;
-      });
-    }
-
-    editorRoot.append(createElement("h4",
-      "Dropdown-Einträge (" + this.config_.items.length + ")"));
-    const hintElement = createElement("p",
-      "Jeder Menüeintrag löst eine Home-Assistant-Aktion aus; " +
-      "Maschinenaktionen bitte mit Bestätigung absichern.");
-    hintElement.className = "hint";
-    editorRoot.append(hintElement);
-
-    const entitySuggestions = createElement("datalist");
-    entitySuggestions.id = "sam-entity-suggestions";
-    for (const entityId of Object.keys(this.hass_?.states || {}).slice(0, 9000)) {
-      const optionElement = createElement("option");
-      optionElement.value = entityId;
-      entitySuggestions.append(optionElement);
-    }
-    editorRoot.append(entitySuggestions);
-
-    this.config_.items.forEach((action, actionIndex) => {
-      this.appendActionEditor_(editorRoot, action, actionIndex);
+    this.config_.items.forEach((action, index) => {
+      this.appendActionEditor_(container, action, index);
     });
-
-    const addActionButton = createElement("button", "+ Eintrag hinzufügen");
-    addActionButton.addEventListener("click", () => {
+    const addButton = createElement("button", "+ Eintrag hinzufügen");
+    addButton.addEventListener("click", () => {
       this.config_.items.push({
-        label: "Neue Aktion",
-        icon: "mdi:gesture-tap-button",
-        domain: "light",
-        service: "toggle",
-        entity: "",
+        label: "Neue Aktion", icon: "mdi:gesture-tap-button",
+        icon_color: "primary", domain: "light", service: "toggle", entity: "",
       });
       this.dispatchConfigChanged_();
       this.renderEditor_();
     });
-    editorRoot.append(addActionButton);
+    container.append(addButton);
+    this.rendered_ = true;
   }
 }
 

@@ -33,3 +33,10 @@ for legacy_identifier in (
     assert not re.search(r"\b" + re.escape(legacy_identifier) + r"\b", source)
 
 print("PASS: version, HACS manifest, public API, Google-style naming")
+
+assert 'createElement("ha-form")' in source
+assert 'createElement("ha-selector")' in source
+assert 'ui_color: {default_color: "primary", include_none: true}' in source
+assert 'isLocalEcho' in source and 'this.rendered_' in source
+assert 'action.icon_color ?? this.config_.icon_color' in source
+print("PASS: native HA editor and focus regression guard")

@@ -4,15 +4,15 @@ Lovelace-Dropdown-Karte für Home Assistant mit **grafischem Konfigurationsedito
 
 ## Status
 
-**Version 00.01.05 – Feature-Branch.** `master` bleibt ohne ausdrückliche Anweisung unverändert. Lauffähige Commits werden automatisch mit dem jeweiligen Tag im Format `xx.xx.xx` versehen.
+**Version 00.01.06 – Feature-Branch.** `master` bleibt ohne ausdrückliche Anweisung unverändert. Lauffähige Commits werden automatisch mit dem jeweiligen Tag im Format `xx.xx.xx` versehen.
 
 ## Funktionen
 
-- Visueller Lovelace-Editor: Titel, Button, Icon, beliebig viele Menüeinträge.
-- Pro Eintrag: Beschriftung, MDI-Icon, Domain/Service, Entität, Zusatzdaten (JSON), Bestätigung, Freigabe und Deaktivierung.
+- Visueller Lovelace-Editor mit nativen Home-Assistant-Feldern: Titel, Button, Symbolsuche, Symbolfarben und Menüeinträge.
+- Pro Eintrag: Beschriftung, durchsuchbare Symbolauswahl, individuelle Icon-Farbe, Domain/Service, Entität, JSON, Bestätigung, Freigabe und Deaktivierung.
 - Menüs werden als schwebendes Popover angezeigt; Bedienung per Touch, Maus und Tastatur.
 - Nur vorhandene und verfügbare Entitäten sind schaltbar; Aktionsfehler werden angezeigt.
-- Die Konfiguration bleibt im Home-Assistant-Dashboard gespeichert.
+- Die Konfiguration bleibt im Dashboard gespeichert. Beim Tippen bleibt der Editor erhalten und der Cursor behält seinen Fokus.
 
 ## Verwendung
 
@@ -23,6 +23,7 @@ type: custom:ha-sam-dropdown-card
 title: Garage
 label: Licht
 icon: mdi:lightbulb-group
+icon_color: blue
 items:
   - label: Alle
     icon: mdi:lightbulb-group
@@ -40,7 +41,7 @@ items:
 
 Custom Repository: `https://github.com/Salvasohn/ha-sam-dropdown-card` (HACS-Typ **Dashboard**). HACS-Installation erfolgt erst nach freigegebener Veröffentlichung auf `master`.
 
-Für den Test ohne Master-Merge kann das getaggte JavaScript-Artefakt aus `00.01.05` nach `/config/www/ha-sam-dropdown-card.js` kopiert und als Dashboard-Ressource `/local/ha-sam-dropdown-card.js?v=00.01.05` registriert werden.
+Für den Test ohne Master-Merge kann das getaggte JavaScript-Artefakt aus `00.01.06` nach `/config/www/ha-sam-dropdown-card.js` kopiert und als Dashboard-Ressource `/local/ha-sam-dropdown-card.js?v=00.01.06` registriert werden.
 
 ## Google JavaScript Style Guide
 
@@ -74,3 +75,7 @@ Bugreports und Feedback: [Issues](https://github.com/Salvasohn/ha-sam-dropdown-c
 2. `master` nur nach expliziter Freigabe ändern.
 3. Möglichst wenige Commits; ein lauffähiger Stand pro Version.
 4. Jeder lauffähige Commit erhält das zugehörige Git-Tag `xx.xx.xx`, auch außerhalb von `master`.
+
+## GUI-Verbesserungen ab 00.01.06
+
+Native `ha-form`- und `ha-selector`-Felder für Symbol (`icon`) und Icon-Farbe (`ui_color`), auch je Menüpunkt. Die Farbe wird als `icon_color` gespeichert und mit Home-Assistant-Theme-Farbvariablen dargestellt. `setConfig` überspringt einen vollständigen Re-Render, wenn Home Assistant ein selbst erzeugtes `config-changed`-Ereignis zurückmeldet. Nur strukturelle Änderungen lösen einen gezielten Neuaufbau aus. Ein produktiver HA-Test steht noch aus.
