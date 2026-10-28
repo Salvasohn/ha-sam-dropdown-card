@@ -157,7 +157,7 @@ async function runTests() {
   });
   assert.deepEqual(navigation, ["/lovelace/garage", "location-changed"]);
   await card.executeAction_({action: "url", url: "https://example.org"});
-  assert.equal(openedUrls[0][0], "https://example.org");
+  assert.equal(openedUrls[0][0], new URL("https://example.org").href);
   assert.equal(alerts.length, 0);
   assert.equal(isActionAvailable({entity: "sensor.demo"}, hass), true);
 
