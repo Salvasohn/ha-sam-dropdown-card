@@ -36,12 +36,12 @@ print("PASS: version, HACS manifest, public API, Google-style naming")
 
 assert 'createElement("ha-form")' in source
 assert 'createElement("ha-selector")' in source
-assert 'ui_color: {default_color: "primary", include_none: true}' in source
+assert 'ui_color: {default_color: "state", include_state: true, include_none: true}' in source
 assert 'isLocalEcho' in source and 'this.rendered_' in source
 assert 'action.icon_color ?? this.config_.icon_color' in source
 print("PASS: native HA editor and focus regression guard")
 
-assert 'const CARD_VERSION = "00.01.12";' in source
+assert 'const CARD_VERSION = "00.01.13";' in source
 assert "createGarageLightItems()" in source
 assert 'label: "Licht"' in source
 assert 'entity: "light.garage_innen_licht_3"' in source
@@ -95,3 +95,10 @@ assert "this.previewItemIcons_" in source
 assert "this.menuItemIcons_" in source
 assert "position: relative; box-sizing: border-box;" in source
 print("PASS: live entity status, aggregated parent icon and corrected preview width")
+
+assert "function getItemIconColor(action, parentColor)" in source
+assert "function getDefaultEntityIconColor(action, hass)" in source
+assert 'sourceConfig.icon_color === undefined' in source
+assert 'action.icon_color = normalizeIconColor(value)' in source
+assert 'this.config_.icon_color = normalizeIconColor(value)' in source
+print("PASS: cleared icon colors persist and use HA state theme colors")

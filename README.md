@@ -4,7 +4,7 @@ Lovelace-Dropdown-Karte für Home Assistant mit **grafischem Konfigurationsedito
 
 ## Status
 
-**Version 00.01.12 – Feature-Branch.** `master` bleibt ohne ausdrückliche Anweisung unverändert. Lauffähige Commits werden automatisch mit dem jeweiligen Tag im Format `xx.xx.xx` versehen.
+**Version 00.01.13 – Feature-Branch.** `master` bleibt ohne ausdrückliche Anweisung unverändert. Lauffähige Commits werden automatisch mit dem jeweiligen Tag im Format `xx.xx.xx` versehen.
 
 ## Funktionen
 
@@ -42,7 +42,7 @@ items:
 
 Custom Repository: `https://github.com/Salvasohn/ha-sam-dropdown-card` (HACS-Typ **Dashboard**). HACS-Installation erfolgt erst nach freigegebener Veröffentlichung auf `master`.
 
-Für den Test ohne Master-Merge kann das getaggte JavaScript-Artefakt aus `00.01.12` nach `/config/www/ha-sam-dropdown-card.js` kopiert und als Dashboard-Ressource `/local/ha-sam-dropdown-card.js?v=00.01.12` registriert werden.
+Für den Test ohne Master-Merge kann das getaggte JavaScript-Artefakt aus `00.01.13` nach `/config/www/ha-sam-dropdown-card.js` kopiert und als Dashboard-Ressource `/local/ha-sam-dropdown-card.js?v=00.01.13` registriert werden.
 
 ## Google JavaScript Style Guide
 
@@ -146,3 +146,17 @@ In der **geöffneten Vorschau** ist das Menü ebenfalls nur so breit wie sein In
 - Einträge mit aktivem Zustand (`on`, unterstützte Öffnungs-/Wiedergabe-/Schlosszustände) leuchten in der individuell gewählten Farbe. Ausgeschaltete Symbole sind grau; nicht sinnvoll binär auswertbare Entitäten behalten ihre konfigurierte Farbe, beeinflussen jedoch nicht den Elternstatus.
 - Zustandsänderungen von Home Assistant aktualisieren die Symbole unmittelbar in beiden Editorvorschauen und im Dashboard, ohne das geöffnete Menü oder die Editor-Eingaben neu aufzubauen.
 - `box-sizing: border-box` behebt den Breitenüberlauf des Buttons. Dadurch fluchtet die rechte Kante der geöffneten Vorschau exakt mit der rechten Buttonkante; die inhaltsabhängige Menübreite bleibt erhalten.
+
+## 00.01.13 – Standardfarbe bei gelöschter Icon-Farbe
+
+Wenn die Icon-Farbe im Karteneditor über **X** zurückgesetzt wird,
+speichert die Karte ausdrücklich `icon_color: null`. Dies ist kein
+Alias für `primary` und führt bei Untereinträgen nicht mehr zur geerbten
+Parent-Farbe. Der Editor zeigt stattdessen Home Assistants voreingestellte
+Option **Status** an (entspricht `state`). Für eingeschaltete Leuchten
+wird die HA-Theme-Farbe (oder die gemeldete RGB-Lichtfarbe) genutzt,
+für ausgeschaltete die passende inaktive Theme-Farbe.
+Nicht farbige Entitätsdomänen verwenden die Standard-Icon-Farbe des Themes.
+Der Parent übernimmt bei aktivem Untereintrag dessen Standardfarbe, wenn
+seine eigene Farbe zurückgesetzt wurde. Bereits ausdrücklich konfigurierte
+Farben bleiben unverändert.

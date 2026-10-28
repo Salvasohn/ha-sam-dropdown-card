@@ -301,6 +301,56 @@ async function runTests() {
   assert.equal(liveOption.findAll((node) => node.tagName === "ha-icon")[0]
     .style.color, "var(--cyan-color, var(--primary-color))");
 
+  // X clears custom colors and must not fall back to primary/parent.
+  assert.equal(normalizeCardConfig({icon_color: null}).icon_color, null);
+  const colorHass = {...oneActiveHass, states: {...oneActiveHass.states,
+    "light.third": {state: "on", attributes: {rgb_color: [255, 100, 25]}}}};
+  const colorCard = new SamDropdownCard();
+  colorCard.hass = colorHass;
+  colorCard.preview = true;
+  colorCard.setConfig({icon_color: null, items: [
+    {label: "Innen 3", icon_color: null, entity: "light.third"},
+  ]});
+  assert.equal(colorCard.parentIcons_[0].style.color, "rgb(255,100,25)");
+  assert.equal(colorCard.previewItemIcons_[0].icon.style.color,
+    "rgb(255,100,25)");
+  colorCard.setConfig({icon_color: "primary", items: [
+    {label: "Innen 3", icon_color: null, entity: "light.third"},
+  ]});
+  assert.equal(colorCard.parentIcons_[0].style.color, "var(--primary-color)");
+  assert.equal(colorCard.previewItemIcons_[0].icon.style.color,
+    "rgb(255,100,25)");
+  colorCard.hass = {...colorHass, states: {...colorHass.states,
+    "light.third": {state: "on", attributes: {}}}};
+  assert.ok(colorCard.previewItemIcons_[0].icon.style.color
+    .includes("--state-light-active-color"));
+  colorCard.hass = {...colorHass, states: {...colorHass.states,
+    "light.third": {state: "off", attributes: {}}}};
+  assert.ok(colorCard.previewItemIcons_[0].icon.style.color
+    .includes("--state-light-inactive-color"));
+
+  const colorEditor = new SamDropdownEditor();
+  colorEditor.hass = hass;
+  colorEditor.setConfig({icon_color: "primary", items: [
+    {label: "Innen 3", entity: "light.third", icon_color: "blue"},
+  ]});
+  const getColors = () => colorEditor.shadowRoot.findAll(
+    (n) => n.tagName === "ha-selector" && n.label === "Icon-Farbe",
+  );
+  assert.equal(getColors().length, 2);
+  assert.equal(getColors()[0].selector.ui_color.default_color, "state");
+  getColors()[0].fire("value-changed", undefined);
+  assert.equal(colorEditor.lastEvent.detail.config.icon_color, null);
+  colorEditor.setConfig(colorEditor.lastEvent.detail.config);
+  getColors()[1].fire("value-changed", undefined);
+  assert.equal(colorEditor.lastEvent.detail.config.items[0].icon_color, null);
+  colorEditor.setConfig(colorEditor.lastEvent.detail.config);
+  colorEditor.renderEditor_();
+  assert.equal(getColors()[0].value, null);
+  assert.equal(getColors()[1].value, null);
+  getColors()[1].fire("value-changed", "green");
+  assert.equal(colorEditor.lastEvent.detail.config.items[0].icon_color, "green");
+
   // Changes in configuration refresh both previews; no new YAML properties.
   previewCard.setConfig({
     label: "Neue Beschriftung",
@@ -370,7 +420,7 @@ async function runTests() {
     entity: "input_select.example",
   }), "call-service");
   console.log("PASS: actions, editor state, layout, two live-updating " +
-    "open/closed previews, live status icons and right-aligned popup");
+    "open/closed previews, native state colors and right-aligned popup");
 }
 
 runTests().catch((error) => {

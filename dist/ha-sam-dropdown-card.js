@@ -1,5 +1,5 @@
 /* SAM Dropdown Card - MIT License */
-const CARD_VERSION = "00.01.12";
+const CARD_VERSION = "00.01.13";
 const CARD_TAG_NAME = "ha-sam-dropdown-card";
 const EDITOR_TAG_NAME = "ha-sam-dropdown-card-editor";
 const CLOSE_MENU_EVENT = "sam-dropdown-close";
@@ -131,7 +131,8 @@ function normalizeCardConfig(config) {
     title: sourceConfig.title ?? "",
     label: sourceConfig.label ?? "Licht",
     icon: sourceConfig.icon ?? "mdi:lightbulb-group",
-    icon_color: sourceConfig.icon_color ?? "primary",
+    icon_color: sourceConfig.icon_color === undefined
+      ? "primary" : sourceConfig.icon_color,
     layout: ["default", "horizontal", "vertical"].includes(sourceConfig.layout)
       ? sourceConfig.layout : "default",
     items: Array.isArray(sourceConfig.items)
@@ -145,6 +146,51 @@ const ICON_COLOR_NAMES = new Set([
   "cyan", "teal", "green", "light-green", "lime", "yellow", "amber",
   "orange", "deep-orange", "brown", "grey", "blue-grey",
 ]);
+
+function normalizeIconColor(value) {
+  // Clicking X in ha-color-picker emits undefined. Store null explicitly,
+  // otherwise setConfig normalizes the missing value back to primary.
+  return value == null || value === "" || value === "state" ? null : value;
+}
+
+function getItemIconColor(action, parentColor) {
+  // null means "HA state color", not "inherit the parent's custom color".
+  return Object.hasOwn(action, "icon_color") ? action.icon_color : parentColor;
+}
+
+function getDefaultEntityIconColor(action, hass) {
+  const stateObj = hass?.states?.[action?.entity];
+  if (!stateObj) return "var(--state-icon-color, #44739e)";
+  if (stateObj.state === "unavailable") {
+    return "var(--state-unavailable-color, var(--disabled-text-color))";
+  }
+  // Home Assistant uses state colors by default for lights; other domains
+  // normally use the theme's uncolored entity icon.
+  if (action.entity.split(".")[0] !== "light") {
+    return "var(--state-icon-color, #44739e)";
+  }
+  const attributes = stateObj.attributes || {};
+  const rgb = attributes.rgb_color;
+  if (stateObj.state === "on" && Array.isArray(rgb) && rgb.length === 3 &&
+      rgb.every((c) => Number.isInteger(c) && c >= 0 && c <= 255)) {
+    return "rgb(" + rgb.join(",") + ")";
+  }
+  const stateKey = stateObj.state.replace(/[^a-zA-Z0-9_]/g, "_");
+  const activeKey = stateObj.state === "on" ? "active" : "inactive";
+  const properties = [
+    ...(attributes.device_class &&
+      /^[a-zA-Z0-9_]+$/.test(attributes.device_class)
+      ? ["--state-light-" + attributes.device_class + "-" + stateKey + "-color"]
+      : []),
+    "--state-light-" + stateKey + "-color",
+    "--state-light-" + activeKey + "-color",
+    "--state-" + activeKey + "-color",
+  ];
+  return properties.reduceRight(
+    (fallback, prop) => "var(" + prop + ", " + fallback + ")",
+    "var(--state-icon-color, #44739e)",
+  );
+}
 
 function getIconColor(colorName) {
   if (colorName === "primary") return "var(--primary-color)";
@@ -185,11 +231,15 @@ function isEntityActive(action, hass) {
   return null;
 }
 
-function setStatusIcon(icon, active, colorName) {
-  icon.style.color = active === false
-    ? "var(--disabled-text-color, #888)"
-    : getIconColor(colorName);
-  icon.style.opacity = active === false ? "0.65" : "1";
+function setStatusIcon(icon, active, colorName, action, hass) {
+  const useDefault = normalizeIconColor(colorName) === null;
+  icon.style.color = useDefault
+    ? getDefaultEntityIconColor(action, hass)
+    : colorName === "none"
+      ? "var(--state-icon-color, #44739e)"
+      : active === false
+        ? "var(--disabled-text-color, #888)" : getIconColor(colorName);
+  icon.style.opacity = active === false && !useDefault ? "0.65" : "1";
   icon.style.filter = active === true
     ? "drop-shadow(0 0 3px currentColor)" : "none";
 }
@@ -445,7 +495,7 @@ class SamDropdownCard extends HTMLElement {
           const option = createElement("div");
           option.className = "preview-option";
           const icon = createIcon(
-            item.icon, item.icon_color ?? this.config_.icon_color,
+            item.icon, getItemIconColor(item, this.config_.icon_color),
           );
           this.previewItemIcons_.push({icon, action: item});
           option.append(icon, createElement("span", item.label || "Aktion"));
@@ -460,18 +510,21 @@ class SamDropdownCard extends HTMLElement {
   }
 
   updateIconStates_() {
-    const anyActive = this.config_.items.some(
+    const activeItem = this.config_.items.find(
       (action) => isEntityActive(action, this.hass_) === true,
     );
     for (const icon of this.parentIcons_) {
-      setStatusIcon(icon, anyActive, this.config_.icon_color);
+      setStatusIcon(
+        icon, !!activeItem, this.config_.icon_color, activeItem, this.hass_,
+      );
     }
     for (const {icon, action} of [
       ...this.previewItemIcons_, ...this.menuItemIcons_,
     ]) {
       setStatusIcon(
         icon, isEntityActive(action, this.hass_),
-        action.icon_color ?? this.config_.icon_color,
+        getItemIconColor(action, this.config_.icon_color),
+        action, this.hass_,
       );
     }
   }
@@ -573,7 +626,7 @@ class SamDropdownCard extends HTMLElement {
       textOverflow: "ellipsis",
     });
     const icon = createIcon(
-      action.icon, action.icon_color ?? this.config_.icon_color,
+      action.icon, getItemIconColor(action, this.config_.icon_color),
     );
     this.menuItemIcons_.push({icon, action});
     menuButton.append(icon, menuLabel);
@@ -828,9 +881,10 @@ class SamDropdownEditor extends HTMLElement {
     iconRow.className = "selector-row";
     this.addSelector_(iconRow, "Symbol", action.icon || "",
       {icon: {}}, (value) => { action.icon = value; });
-    this.addSelector_(iconRow, "Icon-Farbe", action.icon_color ?? "primary",
-      {ui_color: {default_color: "primary", include_none: true}},
-      (value) => { action.icon_color = value; });
+    this.addSelector_(iconRow, "Icon-Farbe",
+      getItemIconColor(action, this.config_.icon_color),
+      {ui_color: {default_color: "state", include_state: true, include_none: true}},
+      (value) => { action.icon_color = normalizeIconColor(value); });
     section.append(iconRow);
 
     const advanced = createElement("details");
@@ -913,8 +967,8 @@ class SamDropdownEditor extends HTMLElement {
     this.addSelector_(appearanceIconRow, "Symbol", this.config_.icon,
       {icon: {}}, (value) => { this.config_.icon = value; });
     this.addSelector_(appearanceIconRow, "Icon-Farbe", this.config_.icon_color,
-      {ui_color: {default_color: "primary", include_none: true}},
-      (value) => { this.config_.icon_color = value; });
+      {ui_color: {default_color: "state", include_state: true, include_none: true}},
+      (value) => { this.config_.icon_color = normalizeIconColor(value); });
     container.append(appearanceIconRow);
 
     container.append(createElement(
