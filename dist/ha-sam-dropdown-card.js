@@ -1,5 +1,5 @@
 /* SAM Dropdown Card - MIT License */
-const CARD_VERSION = "00.01.11";
+const CARD_VERSION = "00.01.12";
 const CARD_TAG_NAME = "ha-sam-dropdown-card";
 const EDITOR_TAG_NAME = "ha-sam-dropdown-card-editor";
 const CLOSE_MENU_EVENT = "sam-dropdown-close";
@@ -51,7 +51,7 @@ const CARD_STYLES = [
   "  min-height: 45px; padding: 8px 12px; background: rgba(127,127,127,.06);",
   "  border: 1px solid var(--divider-color); border-radius: 9px;",
   "  color: inherit; font: inherit; cursor: pointer; touch-action: manipulation;",
-  "  text-align: left; position: relative; }",
+  "  text-align: left; position: relative; box-sizing: border-box; }",
   ".label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis;",
   "  white-space: nowrap; }",
   ".trigger.vertical { flex-direction: column; justify-content: center;",
@@ -159,6 +159,41 @@ function getIconColor(colorName) {
   return "var(--primary-color)";
 }
 
+// Binary entity states drive icon illumination. Entities without a meaningful
+// on/off state retain their configured icon color but cannot light the parent.
+function isEntityActive(action, hass) {
+  const entityId = action.entity;
+  if (!entityId) return null;
+  const state = hass?.states?.[entityId]?.state;
+  if (!state || ["unknown", "unavailable"].includes(state)) return null;
+  if (state === "on") return true;
+  if (state === "off") return false;
+
+  const domain = entityId.split(".")[0];
+  if (domain === "cover") {
+    if (["open", "opening"].includes(state)) return true;
+    if (["closed", "closing"].includes(state)) return false;
+  }
+  if (domain === "lock") {
+    if (state === "unlocked") return true;
+    if (state === "locked") return false;
+  }
+  if (domain === "media_player") {
+    if (state === "playing") return true;
+    if (["paused", "idle", "standby"].includes(state)) return false;
+  }
+  return null;
+}
+
+function setStatusIcon(icon, active, colorName) {
+  icon.style.color = active === false
+    ? "var(--disabled-text-color, #888)"
+    : getIconColor(colorName);
+  icon.style.opacity = active === false ? "0.65" : "1";
+  icon.style.filter = active === true
+    ? "drop-shadow(0 0 3px currentColor)" : "none";
+}
+
 function createElement(tagName, textContent) {
   const element = document.createElement(tagName);
   if (textContent !== undefined) {
@@ -221,6 +256,9 @@ class SamDropdownCard extends HTMLElement {
     this.menu_ = null;
     this.isBusy_ = false;
     this.triggerButton_ = null;
+    this.parentIcons_ = [];
+    this.previewItemIcons_ = [];
+    this.menuItemIcons_ = [];
 
     this.handleOutsidePointerDown_ = (event) => {
       const eventPath = event.composedPath ? event.composedPath() : [];
@@ -295,6 +333,7 @@ class SamDropdownCard extends HTMLElement {
   set hass(hass) {
     this.hass_ = hass;
     this.updateAvailability_();
+    this.updateIconStates_();
   }
 
   getCardSize() {
@@ -315,6 +354,9 @@ class SamDropdownCard extends HTMLElement {
   renderCard_() {
     const shadowRoot = this.shadowRoot;
     shadowRoot.innerHTML = "";
+    this.parentIcons_ = [];
+    this.previewItemIcons_ = [];
+    this.menuItemIcons_ = [];
 
     const stylesheet = createElement("style", CARD_STYLES);
     shadowRoot.append(stylesheet);
@@ -330,6 +372,7 @@ class SamDropdownCard extends HTMLElement {
       this.renderDualPreview_(cardElement);
       shadowRoot.append(cardElement);
       this.triggerButton_ = null;
+      this.updateIconStates_();
       return;
     }
 
@@ -338,6 +381,7 @@ class SamDropdownCard extends HTMLElement {
     shadowRoot.append(cardElement);
     this.triggerButton_ = triggerButton;
     this.updateAvailability_();
+    this.updateIconStates_();
   }
 
   createTriggerButton_(isStaticPreview, isExpanded) {
@@ -350,7 +394,9 @@ class SamDropdownCard extends HTMLElement {
       : "trigger";
     triggerButton.setAttribute("aria-haspopup", "menu");
     triggerButton.setAttribute("aria-expanded", String(isExpanded));
-    triggerButton.append(createIcon(this.config_.icon, this.config_.icon_color));
+    const triggerIcon = createIcon(this.config_.icon, this.config_.icon_color);
+    this.parentIcons_.push(triggerIcon);
+    triggerButton.append(triggerIcon);
 
     const labelElement = createElement("span", this.config_.label);
     labelElement.className = "label";
@@ -398,10 +444,11 @@ class SamDropdownCard extends HTMLElement {
         for (const item of this.config_.items) {
           const option = createElement("div");
           option.className = "preview-option";
-          option.append(
-            createIcon(item.icon, item.icon_color ?? this.config_.icon_color),
-            createElement("span", item.label || "Aktion"),
+          const icon = createIcon(
+            item.icon, item.icon_color ?? this.config_.icon_color,
           );
+          this.previewItemIcons_.push({icon, action: item});
+          option.append(icon, createElement("span", item.label || "Aktion"));
           // The open-menu preview is visual only; it has no click listeners.
           menu.append(option);
         }
@@ -410,6 +457,23 @@ class SamDropdownCard extends HTMLElement {
       previewGroup.append(section);
     }
     containerElement.append(previewGroup);
+  }
+
+  updateIconStates_() {
+    const anyActive = this.config_.items.some(
+      (action) => isEntityActive(action, this.hass_) === true,
+    );
+    for (const icon of this.parentIcons_) {
+      setStatusIcon(icon, anyActive, this.config_.icon_color);
+    }
+    for (const {icon, action} of [
+      ...this.previewItemIcons_, ...this.menuItemIcons_,
+    ]) {
+      setStatusIcon(
+        icon, isEntityActive(action, this.hass_),
+        action.icon_color ?? this.config_.icon_color,
+      );
+    }
   }
 
   updateAvailability_() {
@@ -508,10 +572,11 @@ class SamDropdownCard extends HTMLElement {
       overflow: "hidden",
       textOverflow: "ellipsis",
     });
-    menuButton.append(
-      createIcon(action.icon, action.icon_color ?? this.config_.icon_color),
-      menuLabel,
+    const icon = createIcon(
+      action.icon, action.icon_color ?? this.config_.icon_color,
     );
+    this.menuItemIcons_.push({icon, action});
+    menuButton.append(icon, menuLabel);
     menuButton.onmouseenter = () => {
       menuButton.style.background = "rgba(68,115,158,.23)";
     };
@@ -558,6 +623,7 @@ class SamDropdownCard extends HTMLElement {
 
     this.positionMenu_();
     this.updateAvailability_();
+    this.updateIconStates_();
     this.triggerButton_?.setAttribute("aria-expanded", "true");
 
     document.addEventListener("pointerdown", this.handleOutsidePointerDown_, true);
@@ -607,6 +673,7 @@ class SamDropdownCard extends HTMLElement {
     }
     this.menu_.remove();
     this.menu_ = null;
+    this.menuItemIcons_ = [];
     this.triggerButton_?.setAttribute("aria-expanded", "false");
 
     document.removeEventListener("pointerdown", this.handleOutsidePointerDown_, true);

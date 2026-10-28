@@ -4,7 +4,7 @@ Lovelace-Dropdown-Karte für Home Assistant mit **grafischem Konfigurationsedito
 
 ## Status
 
-**Version 00.01.11 – Feature-Branch.** `master` bleibt ohne ausdrückliche Anweisung unverändert. Lauffähige Commits werden automatisch mit dem jeweiligen Tag im Format `xx.xx.xx` versehen.
+**Version 00.01.12 – Feature-Branch.** `master` bleibt ohne ausdrückliche Anweisung unverändert. Lauffähige Commits werden automatisch mit dem jeweiligen Tag im Format `xx.xx.xx` versehen.
 
 ## Funktionen
 
@@ -42,7 +42,7 @@ items:
 
 Custom Repository: `https://github.com/Salvasohn/ha-sam-dropdown-card` (HACS-Typ **Dashboard**). HACS-Installation erfolgt erst nach freigegebener Veröffentlichung auf `master`.
 
-Für den Test ohne Master-Merge kann das getaggte JavaScript-Artefakt aus `00.01.11` nach `/config/www/ha-sam-dropdown-card.js` kopiert und als Dashboard-Ressource `/local/ha-sam-dropdown-card.js?v=00.01.11` registriert werden.
+Für den Test ohne Master-Merge kann das getaggte JavaScript-Artefakt aus `00.01.12` nach `/config/www/ha-sam-dropdown-card.js` kopiert und als Dashboard-Ressource `/local/ha-sam-dropdown-card.js?v=00.01.12` registriert werden.
 
 ## Google JavaScript Style Guide
 
@@ -139,3 +139,10 @@ Dabei werden `label`, `icon`, `icon_color`, `layout` und `items` aus der aktuell
 Das schwebende Dropdown passt sich horizontal dem **breitesten Menüeintrag** an (`width: max-content` mit einer Mindestbreite von 140 px), statt die vollständige Breite des übergeordneten Buttons einzunehmen. Die **rechte Menükante wird an der rechten Kante des übergeordneten Dropdown-Buttons** ausgerichtet. Falls die so berechnete Position über den linken oder rechten Bildschirmrand hinausragt, bleibt ein Rand von mindestens 4 px zum sichtbaren Bereich erhalten. Lange Bezeichnungen werden bei Platzmangel gekürzt, statt das Menü über den Viewport hinausragen zu lassen.
 
 In der **geöffneten Vorschau** ist das Menü ebenfalls nur so breit wie sein Inhalt und rechtsbündig zum darüberliegenden Button ausgerichtet. Die geschlossene Vorschau sowie die normale Buttonbreite bleiben unverändert. Die Aktions- und Editorlogik ist von dieser Änderung unberührt.
+
+## 00.01.12 – Statusabhängige Icons und ausgerichtete Vorschau
+
+- Der Elternbutton leuchtet in seiner konfigurierten Icon-Farbe, sobald mindestens eine konfigurierte Entität aktiv ist. Sind alle schaltbaren Entitäten aus, erscheint sein Symbol grau. Diese Aggregation funktioniert auch ohne separate übergeordnete Entität.
+- Einträge mit aktivem Zustand (`on`, unterstützte Öffnungs-/Wiedergabe-/Schlosszustände) leuchten in der individuell gewählten Farbe. Ausgeschaltete Symbole sind grau; nicht sinnvoll binär auswertbare Entitäten behalten ihre konfigurierte Farbe, beeinflussen jedoch nicht den Elternstatus.
+- Zustandsänderungen von Home Assistant aktualisieren die Symbole unmittelbar in beiden Editorvorschauen und im Dashboard, ohne das geöffnete Menü oder die Editor-Eingaben neu aufzubauen.
+- `box-sizing: border-box` behebt den Breitenüberlauf des Buttons. Dadurch fluchtet die rechte Kante der geöffneten Vorschau exakt mit der rechten Buttonkante; die inhaltsabhängige Menübreite bleibt erhalten.

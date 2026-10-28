@@ -237,6 +237,70 @@ async function runTests() {
     (node) => node.className === "preview-option",
   ).every((node) => !node.listeners.click), true);
 
+  // Live HA state updates illuminate individual icons and aggregate to the
+  // parent in both previews, without recreating their DOM nodes.
+  const previewParentIcons = previewCard.parentIcons_;
+  const previewIcons = previewCard.previewItemIcons_;
+  assert.equal(previewParentIcons.length, 2);
+  assert.equal(previewParentIcons[0].style.color,
+    "var(--blue-color, var(--primary-color))");
+  const allOffHass = {
+    ...hass,
+    states: {...hass.states, "light.demo": {state: "off"}},
+  };
+  previewCard.hass = allOffHass;
+  assert.equal(previewParentIcons[0].style.color,
+    "var(--disabled-text-color, #888)");
+  assert.equal(previewParentIcons[1].style.color,
+    "var(--disabled-text-color, #888)");
+  assert.equal(previewIcons[0].icon.style.color,
+    "var(--disabled-text-color, #888)");
+  assert.equal(previewIcons[1].icon.style.filter, "none");
+  assert.equal(previewIcons[1].icon.style.color,
+    "var(--blue-color, var(--primary-color))");
+
+  const garageItems = [
+    {label: "Innen 1", entity: "light.demo", icon: "mdi:lightbulb"},
+    {label: "Innen 2", entity: "light.second", icon: "mdi:lightbulb"},
+    {label: "Innen 3", entity: "light.third", icon: "mdi:lightbulb"},
+  ];
+  previewCard.setConfig({label: "Licht", icon_color: "cyan",
+    items: garageItems});
+  const oneActiveHass = {
+    ...hass,
+    states: {...hass.states, "light.demo": {state: "off"},
+      "light.second": {state: "off"}, "light.third": {state: "on"}},
+  };
+  previewCard.hass = oneActiveHass;
+  assert.ok(previewCard.parentIcons_.every((icon) =>
+    icon.style.filter.includes("drop-shadow")));
+  assert.deepEqual(
+    [...previewCard.previewItemIcons_.map((item) => item.icon.style.color)],
+    ["var(--disabled-text-color, #888)", "var(--disabled-text-color, #888)",
+      "var(--cyan-color, var(--primary-color))"],
+  );
+  const activePreviewIcon = previewCard.previewItemIcons_[2].icon;
+  previewCard.hass = {...oneActiveHass, states: {
+    ...oneActiveHass.states, "light.third": {state: "off"},
+  }};
+  assert.equal(previewCard.previewItemIcons_[2].icon, activePreviewIcon);
+  assert.ok(previewCard.parentIcons_.every((icon) =>
+    icon.style.filter === "none"));
+  assert.ok(previewCard.previewItemIcons_.every((item) =>
+    item.icon.style.color === "var(--disabled-text-color, #888)"));
+
+  // The same status behavior applies to the live dashboard trigger and menu.
+  const liveStatusCard = new SamDropdownCard();
+  liveStatusCard.hass = oneActiveHass;
+  liveStatusCard.setConfig({icon_color: "cyan", items: garageItems});
+  const liveOption = liveStatusCard.createMenuButton_(
+    liveStatusCard.config_.items[2]);
+  liveStatusCard.updateIconStates_();
+  assert.equal(liveStatusCard.parentIcons_[0].style.filter,
+    "drop-shadow(0 0 3px currentColor)");
+  assert.equal(liveOption.findAll((node) => node.tagName === "ha-icon")[0]
+    .style.color, "var(--cyan-color, var(--primary-color))");
+
   // Changes in configuration refresh both previews; no new YAML properties.
   previewCard.setConfig({
     label: "Neue Beschriftung",
@@ -297,6 +361,7 @@ async function runTests() {
     (node) => node.tagName === "style",
   )[0].textContent;
   assert.ok(previewStyles.includes("justify-self: end; width: max-content;"));
+  assert.ok(previewStyles.includes("position: relative; box-sizing: border-box;"));
   assert.ok(previewStyles.includes("min-width: 140px; max-width: 100%;"));
 
   // Existing explicit custom services must not change to generic toggle.
@@ -305,7 +370,7 @@ async function runTests() {
     entity: "input_select.example",
   }), "call-service");
   console.log("PASS: actions, editor state, layout, two live-updating " +
-    "open/closed previews and content-sized right-aligned popup");
+    "open/closed previews, live status icons and right-aligned popup");
 }
 
 runTests().catch((error) => {
