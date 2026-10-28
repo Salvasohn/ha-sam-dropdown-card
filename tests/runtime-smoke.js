@@ -212,36 +212,34 @@ async function runTests() {
     (node) => node.className === "preview-section",
   ).length, 0);
   previewCard.preview = true;
-  assert.equal(previewCard.shadowRoot.findAll(
-    (node) => node.className === "preview-section",
-  ).length, 2);
   const previewSections = previewCard.shadowRoot.findAll(
     (node) => node.className === "preview-section",
   );
+  assert.equal(previewSections.length, 1);
   assert.equal(previewSections[0].findAll(
     (node) => node.className === "preview-menu",
-  ).length, 0);
-  assert.equal(previewSections[1].findAll(
+  ).length, 1);
+  assert.equal(previewSections[0].findAll(
     (node) => node.className === "preview-option",
   ).length, 2);
-  assert.equal(previewCard.shadowRoot.findAll(
+  const previewTriggers = previewSections[0].findAll(
     (node) => node.className === "trigger vertical",
-  ).length, 2);
-  assert.deepEqual(
-    [...previewCard.shadowRoot.findAll(
-      (node) => node.className === "preview-heading",
-    ).map((node) => node.textContent)],
-    ["Dropdown – geschlossen", "Dropdown – geöffnet"],
   );
+  assert.equal(previewTriggers.length, 1);
+  assert.equal(previewTriggers[0].attributes["aria-expanded"], "true");
+  assert.equal(previewCard.shadowRoot.findAll(
+    (node) => node.className === "preview-heading",
+  ).length, 0);
+  assert.equal(previewCard.getCardSize(), 4);
   assert.equal(previewCard.shadowRoot.findAll(
     (node) => node.className === "preview-option",
   ).every((node) => !node.listeners.click), true);
 
-  // Live HA state updates illuminate individual icons and aggregate to the
-  // parent in both previews, without recreating their DOM nodes.
+  // Live HA state updates illuminate the single editor preview without
+  // recreating its DOM nodes.
   const previewParentIcons = previewCard.parentIcons_;
   const previewIcons = previewCard.previewItemIcons_;
-  assert.equal(previewParentIcons.length, 2);
+  assert.equal(previewParentIcons.length, 1);
   assert.equal(previewParentIcons[0].style.color,
     "var(--blue-color, var(--primary-color))");
   const allOffHass = {
@@ -251,8 +249,7 @@ async function runTests() {
   previewCard.hass = allOffHass;
   assert.equal(previewParentIcons[0].style.color,
     "var(--disabled-text-color, #888)");
-  assert.equal(previewParentIcons[1].style.color,
-    "var(--disabled-text-color, #888)");
+  assert.equal(previewParentIcons.length, 1);
   assert.equal(previewIcons[0].icon.style.color,
     "var(--disabled-text-color, #888)");
   assert.equal(previewIcons[1].icon.style.filter, "none");
@@ -351,7 +348,7 @@ async function runTests() {
   getColors()[1].fire("value-changed", "green");
   assert.equal(colorEditor.lastEvent.detail.config.items[0].icon_color, "green");
 
-  // Changes in configuration refresh both previews; no new YAML properties.
+  // Config changes refresh the single expanded preview; no new YAML fields.
   previewCard.setConfig({
     label: "Neue Beschriftung",
     items: [{label: "Eintrag 1", entity: "light.demo"}],
@@ -363,7 +360,7 @@ async function runTests() {
     (node) => node.className === "label",
   );
   assert.deepEqual([...labels.map((node) => node.textContent)],
-    ["Neue Beschriftung", "Neue Beschriftung"]);
+    ["Neue Beschriftung"]);
   previewCard.preview = false;
   assert.equal(previewCard.shadowRoot.findAll(
     (node) => node.className === "preview-section",
@@ -420,7 +417,7 @@ async function runTests() {
     entity: "input_select.example",
   }), "call-service");
   console.log("PASS: actions, editor state, layout, two live-updating " +
-    "open/closed previews, native state colors and right-aligned popup");
+    "single expanded preview, native state colors and right-aligned popup");
 }
 
 runTests().catch((error) => {

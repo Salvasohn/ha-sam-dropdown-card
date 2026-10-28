@@ -41,7 +41,7 @@ assert 'isLocalEcho' in source and 'this.rendered_' in source
 assert 'getItemIconColor(action, this.config_.icon_color)' in source
 print("PASS: native HA editor and focus regression guard")
 
-assert 'const CARD_VERSION = "00.01.13";' in source
+assert 'const CARD_VERSION = "00.01.14";' in source
 assert "createGarageLightItems()" in source
 assert 'label: "Licht"' in source
 assert 'entity: "light.garage_innen_licht_3"' in source
@@ -76,11 +76,13 @@ assert 'action: "auto", entity: ""' in source
 print("PASS: automatic action routing and reduced advanced editor")
 
 assert 'set preview(isPreview)' in source
-assert 'renderDualPreview_(containerElement)' in source
-assert 'Dropdown – geschlossen' in source
-assert 'Dropdown – geöffnet' in source
+assert 'renderExpandedPreview_(containerElement)' in source
+assert 'renderDualPreview_' not in source
+assert 'Dropdown – geschlossen' not in source
+assert 'Dropdown – geöffnet' not in source
+assert 'this.createTriggerButton_(true, true)' in source
 assert 'if (this.isPreview_) {' in source
-print("PASS: dual visual previews only in the card editor")
+print("PASS: single expanded visual preview only in the card editor")
 
 assert 'this.menu_.style.width = "max-content";' in source
 assert 'const rightAlignedLeft = triggerBounds.right - menuWidth;' in source

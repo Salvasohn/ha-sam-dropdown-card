@@ -4,7 +4,7 @@ Lovelace-Dropdown-Karte für Home Assistant mit **grafischem Konfigurationsedito
 
 ## Status
 
-**Version 00.01.13 – Feature-Branch.** `master` bleibt ohne ausdrückliche Anweisung unverändert. Lauffähige Commits werden automatisch mit dem jeweiligen Tag im Format `xx.xx.xx` versehen.
+**Version 00.01.14 – Feature-Branch.** `master` bleibt ohne ausdrückliche Anweisung unverändert. Lauffähige Commits werden automatisch mit dem jeweiligen Tag im Format `xx.xx.xx` versehen.
 
 ## Funktionen
 
@@ -42,7 +42,7 @@ items:
 
 Custom Repository: `https://github.com/Salvasohn/ha-sam-dropdown-card` (HACS-Typ **Dashboard**). HACS-Installation erfolgt erst nach freigegebener Veröffentlichung auf `master`.
 
-Für den Test ohne Master-Merge kann das getaggte JavaScript-Artefakt aus `00.01.13` nach `/config/www/ha-sam-dropdown-card.js` kopiert und als Dashboard-Ressource `/local/ha-sam-dropdown-card.js?v=00.01.13` registriert werden.
+Für den Test ohne Master-Merge kann das getaggte JavaScript-Artefakt aus `00.01.14` nach `/config/www/ha-sam-dropdown-card.js` kopiert und als Dashboard-Ressource `/local/ha-sam-dropdown-card.js?v=00.01.14` registriert werden.
 
 ## Google JavaScript Style Guide
 
@@ -160,3 +160,7 @@ Nicht farbige Entitätsdomänen verwenden die Standard-Icon-Farbe des Themes.
 Der Parent übernimmt bei aktivem Untereintrag dessen Standardfarbe, wenn
 seine eigene Farbe zurückgesetzt wurde. Bereits ausdrücklich konfigurierte
 Farben bleiben unverändert.
+
+## 00.01.14 – Kompakte Editorvorschau
+
+Die Karteneditor-Vorschau zeigt nur noch die **aufgeklappte** SAM-Dropdown-Darstellung: einen Parent-Button mit darunterstehendem, rechtsbündigem Menü. Die bisher zusätzliche geschlossene Vorschau sowie die Überschriften „Dropdown – geschlossen“ / „Dropdown – geöffnet“ entfallen. Entitätszustände, Icon-Farben, Layoutwahl und die inhaltsabhängige Menübreite bleiben erhalten. Die Vorschau führt weiterhin keine Aktionen aus. Im Dashboard bleibt die reguläre interaktive Dropdown-Karte unverändert.

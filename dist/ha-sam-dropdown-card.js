@@ -1,5 +1,5 @@
 /* SAM Dropdown Card - MIT License */
-const CARD_VERSION = "00.01.13";
+const CARD_VERSION = "00.01.14";
 const CARD_TAG_NAME = "ha-sam-dropdown-card";
 const EDITOR_TAG_NAME = "ha-sam-dropdown-card-editor";
 const CLOSE_MENU_EVENT = "sam-dropdown-close";
@@ -61,10 +61,7 @@ const CARD_STYLES = [
   "  line-height: 1.3; }",
   ".trigger.vertical .chevron { position: absolute; right: 8px; top: 8px; }",
   "button:disabled { opacity: .5; cursor: not-allowed; }",
-  ".preview-group { display: grid; gap: 16px; }",
   ".preview-section { display: grid; gap: 7px; min-width: 0; }",
-  ".preview-heading { font-size: 12px; font-weight: 600;",
-  "  color: var(--secondary-text-color); }",
   ".preview-menu { display: grid; gap: 2px; box-sizing: border-box;",
   "  justify-self: end; width: max-content; min-width: 140px; max-width: 100%;",
   "  padding: 5px; max-height: 290px; overflow-y: auto; overflow-x: hidden;",
@@ -388,8 +385,8 @@ class SamDropdownCard extends HTMLElement {
 
   getCardSize() {
     if (this.isPreview_) {
-      // Editor-only comparison: button, expanded menu and two labels.
-      return 5 + Math.min(this.config_.items.length, 6);
+      // One expanded preview: trigger and the visible menu.
+      return 2 + Math.min(this.config_.items.length, 6);
     }
     if (this.config_.layout === "vertical") {
       return this.config_.title ? 3 : 2;
@@ -419,7 +416,7 @@ class SamDropdownCard extends HTMLElement {
     }
 
     if (this.isPreview_) {
-      this.renderDualPreview_(cardElement);
+      this.renderExpandedPreview_(cardElement);
       shadowRoot.append(cardElement);
       this.triggerButton_ = null;
       this.updateIconStates_();
@@ -435,7 +432,7 @@ class SamDropdownCard extends HTMLElement {
   }
 
   createTriggerButton_(isStaticPreview, isExpanded) {
-    // Render the same trigger in both previews and on the live dashboard.
+    // Render the same trigger in the editor preview and live dashboard.
     // The preview uses a non-interactive div and never calls HA services.
     const triggerButton = createElement(isStaticPreview ? "div" : "button");
     if (!isStaticPreview) triggerButton.type = "button";
@@ -467,46 +464,35 @@ class SamDropdownCard extends HTMLElement {
     return triggerButton;
   }
 
-  renderDualPreview_(containerElement) {
-    const previewGroup = createElement("div");
-    previewGroup.className = "preview-group";
+  renderExpandedPreview_(containerElement) {
+    // The editor shows only the expanded dropdown, with no duplicate trigger
+    // and no extra heading. It remains a passive, inline preview.
+    const section = createElement("section");
+    section.className = "preview-section";
+    section.append(this.createTriggerButton_(true, true));
 
-    for (const [heading, isExpanded] of [
-      ["Dropdown – geschlossen", false],
-      ["Dropdown – geöffnet", true],
-    ]) {
-      const section = createElement("section");
-      section.className = "preview-section";
-      const title = createElement("div", heading);
-      title.className = "preview-heading";
-      section.append(title, this.createTriggerButton_(true, isExpanded));
+    const menu = createElement("div");
+    menu.className = "preview-menu";
+    menu.setAttribute("role", "presentation");
 
-      if (isExpanded) {
-        const menu = createElement("div");
-        menu.className = "preview-menu";
-        menu.setAttribute("role", "presentation");
-
-        if (!this.config_.items.length) {
-          const emptyMessage = createElement("div", "Keine Menüeinträge vorhanden");
-          emptyMessage.className = "preview-empty";
-          menu.append(emptyMessage);
-        }
-        for (const item of this.config_.items) {
-          const option = createElement("div");
-          option.className = "preview-option";
-          const icon = createIcon(
-            item.icon, getItemIconColor(item, this.config_.icon_color),
-          );
-          this.previewItemIcons_.push({icon, action: item});
-          option.append(icon, createElement("span", item.label || "Aktion"));
-          // The open-menu preview is visual only; it has no click listeners.
-          menu.append(option);
-        }
-        section.append(menu);
-      }
-      previewGroup.append(section);
+    if (!this.config_.items.length) {
+      const emptyMessage = createElement("div", "Keine Menüeinträge vorhanden");
+      emptyMessage.className = "preview-empty";
+      menu.append(emptyMessage);
     }
-    containerElement.append(previewGroup);
+    for (const item of this.config_.items) {
+      const option = createElement("div");
+      option.className = "preview-option";
+      const icon = createIcon(
+        item.icon, getItemIconColor(item, this.config_.icon_color),
+      );
+      this.previewItemIcons_.push({icon, action: item});
+      option.append(icon, createElement("span", item.label || "Aktion"));
+      // The preview never runs actions or opens other dialogs.
+      menu.append(option);
+    }
+    section.append(menu);
+    containerElement.append(section);
   }
 
   updateIconStates_() {
