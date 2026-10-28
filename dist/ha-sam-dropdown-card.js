@@ -1,5 +1,5 @@
 /* SAM Dropdown Card - MIT License */
-const CARD_VERSION = "00.01.06";
+const CARD_VERSION = "00.01.07";
 const CARD_TAG_NAME = "ha-sam-dropdown-card";
 const EDITOR_TAG_NAME = "ha-sam-dropdown-card-editor";
 const CLOSE_MENU_EVENT = "sam-dropdown-close";
@@ -32,6 +32,9 @@ const CARD_STYLES = [
 ].join("\n");
 
 const EDITOR_STYLES = [
+  ".selector-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));",
+  "  gap: 12px; align-items: end; min-width: 0; }",
+  ".selector-row > * { display: block; min-width: 0; width: 100%; }",
   ":host { display: block; color: var(--primary-text-color); }",
   ".root { display: grid; gap: 12px; }",
   "label { display: grid; gap: 5px; font-size: 13px;",
@@ -53,17 +56,35 @@ const EDITOR_STYLES = [
   ".hint { color: var(--secondary-text-color); font-size: 12px; }",
 ].join("\n");
 
+// Based on the already established Garage room card, button2 ("Licht").
+// Only newly created cards receive these defaults; explicit items are preserved.
+const GARAGE_LIGHT_ITEMS = Object.freeze([
+  {label: "Alle", icon: "mdi:lightbulb-group", domain: "light",
+    service: "toggle", entity: "light.garage_lichtgruppe"},
+  {label: "Innen 1", icon: "mdi:lightbulb", domain: "light",
+    service: "toggle", entity: "light.garage_innen_licht_1"},
+  {label: "Innen 2", icon: "mdi:lightbulb", domain: "light",
+    service: "toggle", entity: "light.garage_innen_licht_2"},
+  {label: "Innen 3", icon: "mdi:lightbulb", domain: "light",
+    service: "toggle", entity: "light.garage_innen_licht_3"},
+]);
+
+function createGarageLightItems() {
+  return GARAGE_LIGHT_ITEMS.map((item) => ({...item}));
+}
+
 function normalizeCardConfig(config) {
   const sourceConfig = config || {};
   return {
     ...sourceConfig,
     type: "custom:" + CARD_TAG_NAME,
     title: sourceConfig.title ?? "",
-    label: sourceConfig.label ?? "Aktionen",
-    icon: sourceConfig.icon ?? "mdi:menu-down",
+    label: sourceConfig.label ?? "Licht",
+    icon: sourceConfig.icon ?? "mdi:lightbulb-group",
     icon_color: sourceConfig.icon_color ?? "primary",
     items: Array.isArray(sourceConfig.items)
-      ? sourceConfig.items.map((item) => ({...item})) : [],
+      ? sourceConfig.items.map((item) => ({...item}))
+      : createGarageLightItems(),
   };
 }
 
@@ -178,7 +199,12 @@ class SamDropdownCard extends HTMLElement {
   }
 
   static getStubConfig() {
-    return { label: "Aktionen", icon: "mdi:menu-down", items: [] };
+    return {
+      label: "Licht",
+      icon: "mdi:lightbulb-group",
+      icon_color: "primary",
+      items: createGarageLightItems(),
+    };
   }
 
   setConfig(config) {
@@ -404,10 +430,18 @@ class SamDropdownEditor extends HTMLElement {
   setConfig(config) {
     const incomingConfig = normalizeCardConfig(config);
     const isLocalEcho = JSON.stringify(incomingConfig) === this.lastEmittedConfig_;
+
+    // Home Assistant sends config-changed back through setConfig(). The rendered
+    // controls still have closures pointing to items in this.config_. Replacing
+    // that object here breaks later edits (e.g. entity is silently reverted).
+    // Keep both the DOM and the original item references for local echoes.
+    if (isLocalEcho && this.rendered_) {
+      return;
+    }
+
     this.config_ = incomingConfig;
-    // The HA editor echoes config-changed back via setConfig.
-    // Recreating input nodes on each keystroke would lose focus.
-    if (!this.rendered_ || !isLocalEcho) this.renderEditor_();
+    this.lastEmittedConfig_ = null;
+    this.renderEditor_();
   }
 
   set hass(hass) {
@@ -461,26 +495,19 @@ class SamDropdownEditor extends HTMLElement {
     form.schema = [
       {name: "title", selector: {text: {}}},
       {name: "label", selector: {text: {}}},
-      {name: "icon", selector: {icon: {}}},
-      {name: "icon_color", selector: {
-        ui_color: {default_color: "primary", include_none: true},
-      }},
     ];
     form.data = {
       title: this.config_.title,
       label: this.config_.label,
-      icon: this.config_.icon,
-      icon_color: this.config_.icon_color,
     };
     const labels = {
       title: "Titel (optional)", label: "Button-Text",
-      icon: "Symbol", icon_color: "Icon-Farbe",
     };
     form.computeLabel = (schema) => labels[schema.name] || schema.name;
     form.addEventListener("value-changed", (event) => {
       event.stopPropagation();
       const newValues = event.detail.value || {};
-      for (const key of ["title", "label", "icon", "icon_color"]) {
+      for (const key of ["title", "label"]) {
         if (Object.hasOwn(newValues, key)) this.config_[key] = newValues[key];
       }
       this.dispatchConfigChanged_();
@@ -519,11 +546,16 @@ class SamDropdownEditor extends HTMLElement {
     this.addTextInput_(section, "Bezeichnung", action.label, (value) => {
       action.label = value;
     });
-    this.addSelector_(section, "Symbol", action.icon || "",
+    this.addSelector_(section, "Entität", action.entity || "",
+      {entity: {}}, (value) => { action.entity = value; });
+    const iconRow = createElement("div");
+    iconRow.className = "selector-row";
+    this.addSelector_(iconRow, "Symbol", action.icon || "",
       {icon: {}}, (value) => { action.icon = value; });
-    this.addSelector_(section, "Icon-Farbe", action.icon_color ?? "primary",
+    this.addSelector_(iconRow, "Icon-Farbe", action.icon_color ?? "primary",
       {ui_color: {default_color: "primary", include_none: true}},
       (value) => { action.icon_color = value; });
+    section.append(iconRow);
 
     const actionLabel = createElement("label");
     actionLabel.append(createElement("span", "Aktion"));
@@ -559,9 +591,6 @@ class SamDropdownEditor extends HTMLElement {
         action.service = value;
       });
     }
-
-    this.addSelector_(section, "Entität", action.entity || "",
-      {entity: {}}, (value) => { action.entity = value; });
 
     const advanced = createElement("details");
     advanced.append(createElement("summary", "Erweiterte Einstellungen"));
@@ -599,6 +628,14 @@ class SamDropdownEditor extends HTMLElement {
     root.append(container);
     container.append(createElement("h4", "Darstellung"));
     container.append(this.createAppearanceForm_());
+    const appearanceIconRow = createElement("div");
+    appearanceIconRow.className = "selector-row";
+    this.addSelector_(appearanceIconRow, "Symbol", this.config_.icon,
+      {icon: {}}, (value) => { this.config_.icon = value; });
+    this.addSelector_(appearanceIconRow, "Icon-Farbe", this.config_.icon_color,
+      {ui_color: {default_color: "primary", include_none: true}},
+      (value) => { this.config_.icon_color = value; });
+    container.append(appearanceIconRow);
 
     container.append(createElement(
       "h4", "Dropdown-Einträge (" + this.config_.items.length + ")",
@@ -615,7 +652,7 @@ class SamDropdownEditor extends HTMLElement {
     const addButton = createElement("button", "+ Eintrag hinzufügen");
     addButton.addEventListener("click", () => {
       this.config_.items.push({
-        label: "Neue Aktion", icon: "mdi:gesture-tap-button",
+        label: "Neue Aktion", icon: "mdi:lightbulb",
         icon_color: "primary", domain: "light", service: "toggle", entity: "",
       });
       this.dispatchConfigChanged_();

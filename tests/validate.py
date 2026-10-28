@@ -40,3 +40,13 @@ assert 'ui_color: {default_color: "primary", include_none: true}' in source
 assert 'isLocalEcho' in source and 'this.rendered_' in source
 assert 'action.icon_color ?? this.config_.icon_color' in source
 print("PASS: native HA editor and focus regression guard")
+
+assert 'const CARD_VERSION = "00.01.07";' in source
+assert "createGarageLightItems()" in source
+assert 'label: "Licht"' in source
+assert 'entity: "light.garage_innen_licht_3"' in source
+assert 'selector-row' in source
+assert 'if (isLocalEcho && this.rendered_)' in source
+assert 'this.config_ = incomingConfig' in source
+assert source.index('this.addSelector_(section, "Entität"') < source.index('const iconRow = createElement("div")')
+print("PASS: garage defaults, two-column icon layout, stable editor references")
