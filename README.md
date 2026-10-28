@@ -4,12 +4,12 @@ Lovelace-Dropdown-Karte für Home Assistant mit **grafischem Konfigurationsedito
 
 ## Status
 
-**Version 00.01.08 – Feature-Branch.** `master` bleibt ohne ausdrückliche Anweisung unverändert. Lauffähige Commits werden automatisch mit dem jeweiligen Tag im Format `xx.xx.xx` versehen.
+**Version 00.01.09 – Feature-Branch.** `master` bleibt ohne ausdrückliche Anweisung unverändert. Lauffähige Commits werden automatisch mit dem jeweiligen Tag im Format `xx.xx.xx` versehen.
 
 ## Funktionen
 
-- Visueller Lovelace-Editor mit nativen Home-Assistant-Feldern: Layout (horizontal oder vertikal), Entität, Symbolsuche, Icon-Farbe und Menüeinträge. Symbol und Farbe stehen nebeneinander, die Entität darüber.
-- Pro Eintrag: Beschriftung, durchsuchbare Symbolauswahl, individuelle Icon-Farbe, Domain/Service, Entität, JSON, Bestätigung, Freigabe und Deaktivierung.
+- Visueller Lovelace-Editor mit nativen Home-Assistant-Feldern: Layout (Standard, horizontal oder vertikal), Entität, Symbolsuche, Icon-Farbe und Menüeinträge. Symbol und Farbe stehen nebeneinander, die Entität darüber.
+- Pro Eintrag: Beschriftung, durchsuchbare Symbolauswahl, individuelle Icon-Farbe, Entität, Bestätigung, Freigabe und Deaktivierung. Spezialaktionen sind in **Erweiterte Einstellungen** verborgen.
 - Menüs werden als schwebendes Popover angezeigt; Bedienung per Touch, Maus und Tastatur.
 - Nur vorhandene und verfügbare Entitäten sind schaltbar; Aktionsfehler werden angezeigt.
 - Die Konfiguration bleibt im Dashboard gespeichert. Auch nach Auswahl einer Entität bleibt diese bei weiteren Eingaben und beim Speichern erhalten; beim Tippen bleibt der Cursor im Feld.
@@ -24,7 +24,7 @@ title: Garage
 label: Licht
 icon: mdi:lightbulb-group
 icon_color: blue
-layout: horizontal
+layout: default
 items:
   - label: Alle
     icon: mdi:lightbulb-group
@@ -42,7 +42,7 @@ items:
 
 Custom Repository: `https://github.com/Salvasohn/ha-sam-dropdown-card` (HACS-Typ **Dashboard**). HACS-Installation erfolgt erst nach freigegebener Veröffentlichung auf `master`.
 
-Für den Test ohne Master-Merge kann das getaggte JavaScript-Artefakt aus `00.01.08` nach `/config/www/ha-sam-dropdown-card.js` kopiert und als Dashboard-Ressource `/local/ha-sam-dropdown-card.js?v=00.01.08` registriert werden.
+Für den Test ohne Master-Merge kann das getaggte JavaScript-Artefakt aus `00.01.09` nach `/config/www/ha-sam-dropdown-card.js` kopiert und als Dashboard-Ressource `/local/ha-sam-dropdown-card.js?v=00.01.09` registriert werden.
 
 ## Google JavaScript Style Guide
 
@@ -81,7 +81,7 @@ Bugreports und Feedback: [Issues](https://github.com/Salvasohn/ha-sam-dropdown-c
 
 Native `ha-form`- und `ha-selector`-Felder für Symbol (`icon`) und Icon-Farbe (`ui_color`), auch je Menüpunkt. Die Farbe wird als `icon_color` gespeichert und mit Home-Assistant-Theme-Farbvariablen dargestellt. `setConfig` überspringt einen vollständigen Re-Render, wenn Home Assistant ein selbst erzeugtes `config-changed`-Ereignis zurückmeldet. Nur strukturelle Änderungen lösen einen gezielten Neuaufbau aus. Ein produktiver HA-Test steht noch aus.
 
-## 00.01.08 – Garage-Licht-Vorlage und Editor-Fixes
+## 00.01.07 – Garage-Licht-Vorlage und Editor-Fixes
 
 Neue Karten starten mit dem vorhandenen Garage-Licht-Dropdown: Button **Licht** (`mdi:lightbulb-group`) mit den Einträgen **Alle**, **Innen 1**, **Innen 2**, **Innen 3** und den entsprechenden `light.garage_*`-Entitäten. Diese Vorbelegung wird ausschließlich für neu erstellte Karten ohne explizite `items` verwendet. Bestehende Karten mit `items: []` oder individuellen Einträgen behalten diese Einstellungen.
 
@@ -89,4 +89,34 @@ In der GUI stehen **Entität** vor **Symbol** und **Icon-Farbe**; Symbol und Far
 
 ## 00.01.08 – Button-Layout
 
-Das GUI-Feld **Layout** unter **Darstellung** bietet **Horizontal – Symbol neben Name** und **Vertikal – Symbol über Name**. Die Auswahl wird als `layout: horizontal` beziehungsweise `layout: vertical` in der Karte gespeichert. Standard ist `horizontal`, auch für bisherige Karten ohne `layout`. Bei vertikalem Layout wird nur der Dropdown-Auslösebutton umgeordnet; die eigentliche Menüeintragsliste bleibt wie bisher bedienbar. Der vertikale Button erhält mehr Höhe und der Dropdown-Pfeil steht rechts oben. Bestehende Entitätsauswahl, Icons, Farben und die Garage-Defaults bleiben unverändert.
+Das GUI-Feld **Layout** unter **Darstellung** bietet jetzt **Standard-Layout**, **Horizontales Layout** und **Vertikales Layout**. `layout: default` verwendet dieselbe horizontale Darstellung wie bisher. Ältere Karten mit `layout: horizontal` bleiben unverändert. Bei vertikalem Layout wird nur der Dropdown-Auslösebutton umgeordnet; die eigentliche Menüeintragsliste bleibt wie bisher bedienbar. Der vertikale Button erhält mehr Höhe und der Dropdown-Pfeil steht rechts oben. Bestehende Entitätsauswahl, Icons, Farben und die Garage-Defaults bleiben unverändert.
+
+## 00.01.09 – Vereinfachte Aktionen und Standard-Layout
+
+- Layoutauswahl: **Standard-Layout**, **Horizontales Layout**, **Vertikales Layout**. Standard-Layout und horizontales Layout zeigen Symbol und Beschriftung nebeneinander.
+- Unter einem Menüeintrag sind **Bezeichnung**, **Entität**, **Symbol** und **Icon-Farbe** direkt sichtbar. **Aktion** liegt ausschließlich unter **Erweiterte Einstellungen**.
+- **Standard (automatisch)** schaltet `light`, `switch`, `input_boolean`, `fan` und `automation` mit `toggle`. Nicht umschaltbare Entitätsarten öffnen die Home-Assistant-Detailansicht (`more-info`), statt einen ungeeigneten Service aufzurufen. Andere Domänen wie `cover` werden **nicht** automatisch betätigt.
+- Erweiterte Aktionen: **Mehr Informationen**, **Dienst ausführen**, **Navigation** und **URL öffnen**. `Domain`, `Service` und JSON-Daten erscheinen nur bei Dienstaufrufen; für Navigation/URL werden die passenden Eingabefelder eingeblendet.
+- **Abwärtskompatibilität:** Bereits konfigurierte `domain`/`service`-Aktionen werden weiterhin ausgeführt. Insbesondere `scene.turn_on`, `lawn_mower.dock` und `input_select.select_option` bleiben unverändert. Ein bestehender `light.toggle` wird als normale Umschaltaktion erkannt.
+- Neu angelegte Einträge benötigen für das Standardverhalten nur eine Entität, keinen expliziten Service. Die vorgegebenen vier Garagenlichter bleiben unverändert.
+
+### Neues Konfigurationsschema
+
+```yaml
+type: custom:ha-sam-dropdown-card
+label: Licht
+layout: default
+items:
+  - label: Garagenlicht
+    entity: light.garage_lichtgruppe  # Automatisch light.toggle
+  - label: Luftfeuchtigkeit
+    entity: sensor.garage_humidity   # Automatisch Mehr Informationen
+  - label: Ladestation
+    entity: lawn_mower.mahroboter
+    action: call-service
+    domain: lawn_mower
+    service: dock
+    confirm: "Roboter zur Ladestation senden?"
+```
+
+Die vorhandenen Eigenschaften `domain`, `service` und `data` werden bei Alt-Konfigurationen weiter unterstützt. `action` ist optional und wird nur gesetzt, wenn die Auswahl im erweiterten Editor geändert wird.

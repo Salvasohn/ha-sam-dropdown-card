@@ -41,7 +41,7 @@ assert 'isLocalEcho' in source and 'this.rendered_' in source
 assert 'action.icon_color ?? this.config_.icon_color' in source
 print("PASS: native HA editor and focus regression guard")
 
-assert 'const CARD_VERSION = "00.01.08";' in source
+assert 'const CARD_VERSION = "00.01.09";' in source
 assert "createGarageLightItems()" in source
 assert 'label: "Licht"' in source
 assert 'entity: "light.garage_innen_licht_3"' in source
@@ -52,14 +52,25 @@ assert source.index('this.addSelector_(section, "Entität"') < source.index('con
 print("PASS: garage defaults, two-column icon layout, stable editor references")
 
 # Horizontal is backward compatible; both layouts must be available in the GUI.
-assert 'layout: sourceConfig.layout === "vertical" ? "vertical" : "horizontal"' in source
-assert 'layout: "horizontal"' in source
+assert 'layout: ["default", "horizontal", "vertical"].includes(sourceConfig.layout)' in source
+assert 'layout: "default"' in source
 assert '{name: "layout", selector: {select: {' in source
-assert '{value: "horizontal", label: "Horizontal – Symbol neben Name"}' in source
-assert '{value: "vertical", label: "Vertikal – Symbol über Name"}' in source
+assert '{value: "default", label: "Standard-Layout"}' in source
+assert '{value: "horizontal", label: "Horizontales Layout"}' in source
+assert '{value: "vertical", label: "Vertikales Layout"}' in source
 assert 'triggerButton.className = this.config_.layout === "vertical"' in source
 assert '".trigger.vertical { flex-direction: column;' in source
 assert 'chevronIcon.className = "chevron";' in source
 assert 'for (const key of ["title", "label", "layout"])' in source
 assert 'layout: vertical' in (repo_root / "README.md").read_text()
 print("PASS: horizontal/vertical layout selector, rendering, defaults and persistence")
+
+assert 'const AUTOMATIC_TOGGLE_DOMAINS = new Set([' in source
+assert 'function getActionMode(action)' in source
+assert 'function getAutomaticService(action)' in source
+assert 'new CustomEvent("hass-more-info"' in source
+assert 'window.history.pushState(' in source
+assert 'window.open(destination.href, "_blank", "noopener,noreferrer")' in source
+assert 'this.renderEditor_(index)' in source
+assert 'action: "auto", entity: ""' in source
+print("PASS: automatic action routing and reduced advanced editor")

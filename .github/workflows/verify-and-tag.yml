@@ -16,6 +16,7 @@ jobs:
         run: |
           node --check dist/ha-sam-dropdown-card.js
           python3 tests/validate.py
+          node tests/runtime-smoke.js
       - name: Create annotated tag for functional commit
         shell: bash
         run: |

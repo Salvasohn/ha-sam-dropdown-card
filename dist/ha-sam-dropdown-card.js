@@ -1,22 +1,48 @@
 /* SAM Dropdown Card - MIT License */
-const CARD_VERSION = "00.01.08";
+const CARD_VERSION = "00.01.09";
 const CARD_TAG_NAME = "ha-sam-dropdown-card";
 const EDITOR_TAG_NAME = "ha-sam-dropdown-card-editor";
 const CLOSE_MENU_EVENT = "sam-dropdown-close";
 
-const ACTION_PRESETS = Object.freeze([
-  ["light.toggle", "Licht umschalten"],
-  ["light.turn_on", "Licht einschalten"],
-  ["light.turn_off", "Licht ausschalten"],
-  ["switch.toggle", "Schalter umschalten"],
-  ["scene.turn_on", "Szene aktivieren"],
-  ["script.turn_on", "Skript ausführen"],
-  ["button.press", "Taster betätigen"],
-  ["cover.open_cover", "Beschattung öffnen"],
-  ["cover.close_cover", "Beschattung schließen"],
-  ["lawn_mower.dock", "Mähroboter zur Ladestation"],
-  ["input_select.select_option", "Auswahlhelfer setzen"],
-].map((preset) => Object.freeze(preset)));
+// Only domains with well-defined, reversible toggle behavior are automatic.
+const AUTOMATIC_TOGGLE_DOMAINS = new Set([
+  "light", "switch", "input_boolean", "fan", "automation",
+]);
+
+const ACTION_MODES = Object.freeze([
+  ["auto", "Standard (automatisch)"],
+  ["more-info", "Mehr Informationen"],
+  ["call-service", "Dienst ausführen"],
+  ["navigate", "Navigation"],
+  ["url", "URL öffnen"],
+]);
+
+function getActionMode(action) {
+  if (action.action) {
+    return ACTION_MODES.some(([value]) => value === action.action)
+      ? action.action : "auto";
+  }
+  // Backward compatibility with actions before version 00.01.09:
+  // explicit services (e.g. mower dock, scenes) must never be changed.
+  if (action.domain && action.service) {
+    const entityDomain = (action.entity || "").split(".")[0];
+    return action.service === "toggle" && action.domain === entityDomain
+      ? "auto" : "call-service";
+  }
+  return "auto";
+}
+
+function getAutomaticService(action) {
+  const entityDomain = (action.entity || "").split(".")[0];
+  if (action.action === undefined && action.domain && action.service === "toggle" &&
+      action.domain === entityDomain) {
+    return {domain: action.domain, service: action.service};
+  }
+  if (AUTOMATIC_TOGGLE_DOMAINS.has(entityDomain)) {
+    return {domain: entityDomain, service: "toggle"};
+  }
+  return null;
+}
 
 const CARD_STYLES = [
   "ha-card { padding: 12px; color: var(--primary-text-color); }",
@@ -88,7 +114,8 @@ function normalizeCardConfig(config) {
     label: sourceConfig.label ?? "Licht",
     icon: sourceConfig.icon ?? "mdi:lightbulb-group",
     icon_color: sourceConfig.icon_color ?? "primary",
-    layout: sourceConfig.layout === "vertical" ? "vertical" : "horizontal",
+    layout: ["default", "horizontal", "vertical"].includes(sourceConfig.layout)
+      ? sourceConfig.layout : "default",
     items: Array.isArray(sourceConfig.items)
       ? sourceConfig.items.map((item) => ({...item}))
       : createGarageLightItems(),
@@ -131,15 +158,26 @@ function createIcon(iconName, colorName) {
 }
 
 function isActionAvailable(action, hass) {
-  if (!action.domain || !action.service || !action.entity || action.disabled) {
+  if (action.disabled) return false;
+  if (action.enabled_entity &&
+      hass?.states?.[action.enabled_entity]?.state !== "on") {
     return false;
   }
+  const mode = getActionMode(action);
+  if (mode === "navigate") {
+    return typeof action.navigation_path === "string" &&
+      action.navigation_path.startsWith("/") &&
+      !action.navigation_path.startsWith("//");
+  }
+  if (mode === "url") {
+    return typeof action.url === "string" && action.url.trim().length > 0;
+  }
+  if (mode === "call-service" && (!action.domain || !action.service)) {
+    return false;
+  }
+  if (!action.entity) return mode === "call-service";
   const entityState = hass?.states?.[action.entity]?.state;
-  if (!entityState || ["unknown", "unavailable"].includes(entityState)) {
-    return false;
-  }
-  return !action.enabled_entity ||
-    hass?.states?.[action.enabled_entity]?.state === "on";
+  return !!entityState && !["unknown", "unavailable"].includes(entityState);
 }
 
 function parseActionData(rawData) {
@@ -210,7 +248,7 @@ class SamDropdownCard extends HTMLElement {
       label: "Licht",
       icon: "mdi:lightbulb-group",
       icon_color: "primary",
-      layout: "horizontal",
+      layout: "default",
       items: createGarageLightItems(),
     };
   }
@@ -304,9 +342,42 @@ class SamDropdownCard extends HTMLElement {
     this.isBusy_ = true;
     this.updateAvailability_();
     try {
-      const serviceData = parseActionData(action.data);
-      serviceData.entity_id = action.entity;
-      await this.hass_.callService(action.domain, action.service, serviceData);
+      const mode = getActionMode(action);
+      if (mode === "more-info") {
+        this.dispatchEvent(new CustomEvent("hass-more-info", {
+          detail: {entityId: action.entity},
+          bubbles: true,
+          composed: true,
+        }));
+      } else if (mode === "navigate") {
+        if (!action.navigation_path.startsWith("/") ||
+            action.navigation_path.startsWith("//")) {
+          throw new Error("Ungültiger Navigationspfad");
+        }
+        window.history.pushState(null, "", action.navigation_path);
+        window.dispatchEvent(new Event("location-changed"));
+      } else if (mode === "url") {
+        const destination = new URL(action.url, window.location.href);
+        if (!["http:", "https:"].includes(destination.protocol)) {
+          throw new Error("Nur HTTP- und HTTPS-Adressen sind erlaubt");
+        }
+        window.open(destination.href, "_blank", "noopener,noreferrer");
+      } else {
+        const automaticService = mode === "auto" ? getAutomaticService(action) : null;
+        if (mode === "auto" && !automaticService) {
+          this.dispatchEvent(new CustomEvent("hass-more-info", {
+            detail: {entityId: action.entity},
+            bubbles: true,
+            composed: true,
+          }));
+        } else {
+          const domain = automaticService?.domain ?? action.domain;
+          const service = automaticService?.service ?? action.service;
+          const serviceData = mode === "call-service" ? parseActionData(action.data) : {};
+          if (action.entity) serviceData.entity_id = action.entity;
+          await this.hass_.callService(domain, service, serviceData);
+        }
+      }
       this.closeMenu_();
     } catch (error) {
       window.alert("Aktion fehlgeschlagen: " + String(error));
@@ -513,8 +584,9 @@ class SamDropdownEditor extends HTMLElement {
       {name: "layout", selector: {select: {
         mode: "dropdown",
         options: [
-          {value: "horizontal", label: "Horizontal – Symbol neben Name"},
-          {value: "vertical", label: "Vertikal – Symbol über Name"},
+          {value: "default", label: "Standard-Layout"},
+          {value: "horizontal", label: "Horizontales Layout"},
+          {value: "vertical", label: "Vertikales Layout"},
         ],
       }}},
     ];
@@ -538,7 +610,7 @@ class SamDropdownEditor extends HTMLElement {
     return form;
   }
 
-  appendActionEditor_(container, action, index) {
+  appendActionEditor_(container, action, index, expandedActionIndex) {
     const section = createElement("section");
     const header = createElement("header");
     header.append(createElement("b", action.label || "Eintrag " + (index + 1)));
@@ -580,47 +652,51 @@ class SamDropdownEditor extends HTMLElement {
       (value) => { action.icon_color = value; });
     section.append(iconRow);
 
+    const advanced = createElement("details");
+    advanced.append(createElement("summary", "Erweiterte Einstellungen"));
+    if (index === expandedActionIndex) advanced.open = true;
+
     const actionLabel = createElement("label");
     actionLabel.append(createElement("span", "Aktion"));
     const select = createElement("select");
-    const selectedAction = (action.domain || "") + "." + (action.service || "");
-    for (const [value, label] of [
-      ...ACTION_PRESETS, ["custom", "Eigene Aktion"],
-    ]) {
+    for (const [value, label] of ACTION_MODES) {
       const option = createElement("option", label);
       option.value = value;
       select.append(option);
     }
-    select.value = ACTION_PRESETS.some(([preset]) => preset === selectedAction)
-      ? selectedAction : "custom";
+    const actionMode = getActionMode(action);
+    select.value = actionMode;
     select.addEventListener("change", () => {
-      if (select.value === "custom") {
-        action.domain = "";
-        action.service = "";
-      } else {
-        [action.domain, action.service] = select.value.split(".");
-      }
+      action.action = select.value;
       this.dispatchConfigChanged_();
-      // Adding/removing custom service inputs is a structural change.
-      this.renderEditor_();
+      // Only change structure when switching between action modes.
+      this.renderEditor_(index);
     });
     actionLabel.append(select);
-    section.append(actionLabel);
-    if (select.value === "custom") {
-      this.addTextInput_(section, "Domain", action.domain, (value) => {
+    advanced.append(actionLabel);
+
+    if (actionMode === "call-service") {
+      this.addTextInput_(advanced, "Domain", action.domain ?? "", (value) => {
         action.domain = value;
       });
-      this.addTextInput_(section, "Service", action.service, (value) => {
+      this.addTextInput_(advanced, "Service", action.service ?? "", (value) => {
         action.service = value;
+      });
+      this.addTextInput_(advanced, "Zusatzdaten (JSON)",
+        typeof action.data === "string"
+          ? action.data : JSON.stringify(action.data || {}),
+        (value) => {action.data = value;});
+    }
+    if (actionMode === "navigate") {
+      this.addTextInput_(advanced, "Navigationspfad",
+        action.navigation_path ?? "", (value) => {action.navigation_path = value;});
+    }
+    if (actionMode === "url") {
+      this.addTextInput_(advanced, "URL", action.url ?? "", (value) => {
+        action.url = value;
       });
     }
 
-    const advanced = createElement("details");
-    advanced.append(createElement("summary", "Erweiterte Einstellungen"));
-    this.addTextInput_(advanced, "Zusatzdaten (JSON)",
-      typeof action.data === "string"
-        ? action.data : JSON.stringify(action.data || {}),
-      (value) => { action.data = value; });
     this.addTextInput_(advanced, "Bestätigungstext", action.confirm, (value) => {
       action.confirm = value;
     });
@@ -641,7 +717,7 @@ class SamDropdownEditor extends HTMLElement {
     container.append(section);
   }
 
-  renderEditor_() {
+  renderEditor_(expandedActionIndex = -1) {
     if (!this.config_) return;
     const root = this.shadowRoot;
     root.innerHTML = "";
@@ -670,13 +746,13 @@ class SamDropdownEditor extends HTMLElement {
     container.append(hint);
 
     this.config_.items.forEach((action, index) => {
-      this.appendActionEditor_(container, action, index);
+      this.appendActionEditor_(container, action, index, expandedActionIndex);
     });
     const addButton = createElement("button", "+ Eintrag hinzufügen");
     addButton.addEventListener("click", () => {
       this.config_.items.push({
         label: "Neue Aktion", icon: "mdi:lightbulb",
-        icon_color: "primary", domain: "light", service: "toggle", entity: "",
+        icon_color: "primary", action: "auto", entity: "",
       });
       this.dispatchConfigChanged_();
       this.renderEditor_();
