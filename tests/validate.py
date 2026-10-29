@@ -41,7 +41,7 @@ assert 'isLocalEcho' in source and 'this.rendered_' in source
 assert 'getItemIconColor(action, this.config_.icon_color)' in source
 print("PASS: native HA editor and focus regression guard")
 
-assert 'const CARD_VERSION = "00.01.14";' in source
+assert 'const CARD_VERSION = "00.01.15";' in source
 assert "createGarageLightItems()" in source
 assert 'label: "Licht"' in source
 assert 'entity: "light.garage_innen_licht_3"' in source
@@ -61,7 +61,7 @@ assert '{value: "vertical", label: "Vertikales Layout"}' in source
 assert 'triggerButton.className = this.config_.layout === "vertical"' in source
 assert '".trigger.vertical { flex-direction: column;' in source
 assert 'chevronIcon.className = "chevron";' in source
-assert 'for (const key of ["title", "label", "layout"])' in source
+assert 'for (const key of ["title", "label", "display_mode", "layout"])' in source
 assert 'layout: vertical' in (repo_root / "README.md").read_text()
 print("PASS: horizontal/vertical layout selector, rendering, defaults and persistence")
 
@@ -104,3 +104,13 @@ assert 'sourceConfig.icon_color === undefined' in source
 assert 'action.icon_color = normalizeIconColor(value)' in source
 assert 'this.config_.icon_color = normalizeIconColor(value)' in source
 print("PASS: cleared icon colors persist and use HA state theme colors")
+
+assert 'display_mode: ["standard", "compact"].includes(sourceConfig.display_mode)' in source
+assert '{name: "display_mode", selector: {select: {' in source
+assert '{value: "standard", label: "Standard"}' in source
+assert '{value: "compact", label: "Kompakt"}' in source
+assert 'display_mode: "Darstellung"' in source
+assert '"trigger compact"' in source
+assert '".trigger.compact { height: 64px; min-height: 64px;' in source
+assert 'ha-card.compact-card { padding: 0;' in source
+print("PASS: compact OG-Bad presentation and unchanged default appearance")

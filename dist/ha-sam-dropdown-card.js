@@ -1,5 +1,5 @@
 /* SAM Dropdown Card - MIT License */
-const CARD_VERSION = "00.01.14";
+const CARD_VERSION = "00.01.15";
 const CARD_TAG_NAME = "ha-sam-dropdown-card";
 const EDITOR_TAG_NAME = "ha-sam-dropdown-card-editor";
 const CLOSE_MENU_EVENT = "sam-dropdown-close";
@@ -46,6 +46,9 @@ function getAutomaticService(action) {
 
 const CARD_STYLES = [
   "ha-card { padding: 12px; color: var(--primary-text-color); }",
+  // Compact mode is a flat room-style button, not a padded card inside a card.
+  "ha-card.compact-card { padding: 0; background: transparent; border: 0;",
+  "  box-shadow: none; }",
   ".title { font-weight: 600; margin-bottom: 9px; }",
   ".trigger { display: flex; align-items: center; gap: 9px; width: 100%;",
   "  min-height: 45px; padding: 8px 12px; background: rgba(127,127,127,.06);",
@@ -60,6 +63,14 @@ const CARD_STYLES = [
   "  white-space: normal; overflow: visible; overflow-wrap: anywhere;",
   "  line-height: 1.3; }",
   ".trigger.vertical .chevron { position: absolute; right: 8px; top: 8px; }",
+  // Compact OG-Bad style: icon above caption and chevron at the upper right.
+  // These rules override either existing layout without changing its config.
+  ".trigger.compact { height: 64px; min-height: 64px; padding: 6px 25px 4px;",
+  "  display: flex; flex-direction: column; align-items: center;",
+  "  justify-content: center; gap: 2px; text-align: center; font-size: 14px; }",
+  ".trigger.compact .label { flex: none; width: 100%; line-height: 1.2;",
+  "  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }",
+  ".trigger.compact .chevron { position: absolute; right: 8px; top: 6px; }",
   "button:disabled { opacity: .5; cursor: not-allowed; }",
   ".preview-section { display: grid; gap: 7px; min-width: 0; }",
   ".preview-menu { display: grid; gap: 2px; box-sizing: border-box;",
@@ -132,6 +143,8 @@ function normalizeCardConfig(config) {
       ? "primary" : sourceConfig.icon_color,
     layout: ["default", "horizontal", "vertical"].includes(sourceConfig.layout)
       ? sourceConfig.layout : "default",
+    display_mode: ["standard", "compact"].includes(sourceConfig.display_mode)
+      ? sourceConfig.display_mode : "standard",
     items: Array.isArray(sourceConfig.items)
       ? sourceConfig.items.map((item) => ({...item}))
       : createGarageLightItems(),
@@ -353,6 +366,7 @@ class SamDropdownCard extends HTMLElement {
       icon: "mdi:lightbulb-group",
       icon_color: "primary",
       layout: "default",
+      display_mode: "standard",
       items: createGarageLightItems(),
     };
   }
@@ -388,6 +402,9 @@ class SamDropdownCard extends HTMLElement {
       // One expanded preview: trigger and the visible menu.
       return 2 + Math.min(this.config_.items.length, 6);
     }
+    if (this.config_.display_mode === "compact") {
+      return this.config_.title ? 2 : 1;
+    }
     if (this.config_.layout === "vertical") {
       return this.config_.title ? 3 : 2;
     }
@@ -409,6 +426,9 @@ class SamDropdownCard extends HTMLElement {
     shadowRoot.append(stylesheet);
 
     const cardElement = createElement("ha-card");
+    if (this.config_.display_mode === "compact") {
+      cardElement.className = "compact-card";
+    }
     if (this.config_.title) {
       const titleElement = createElement("div", this.config_.title);
       titleElement.className = "title";
@@ -436,9 +456,10 @@ class SamDropdownCard extends HTMLElement {
     // The preview uses a non-interactive div and never calls HA services.
     const triggerButton = createElement(isStaticPreview ? "div" : "button");
     if (!isStaticPreview) triggerButton.type = "button";
-    triggerButton.className = this.config_.layout === "vertical"
-      ? "trigger vertical"
-      : "trigger";
+    triggerButton.className = this.config_.display_mode === "compact"
+      ? "trigger compact"
+      : this.config_.layout === "vertical"
+        ? "trigger vertical" : "trigger";
     triggerButton.setAttribute("aria-haspopup", "menu");
     triggerButton.setAttribute("aria-expanded", String(isExpanded));
     const triggerIcon = createIcon(this.config_.icon, this.config_.icon_color);
@@ -449,6 +470,9 @@ class SamDropdownCard extends HTMLElement {
     labelElement.className = "label";
     const chevronIcon = createIcon("mdi:chevron-down");
     chevronIcon.className = "chevron";
+    if (this.config_.display_mode === "compact") {
+      chevronIcon.style.setProperty("--mdc-icon-size", "16px");
+    }
     triggerButton.append(labelElement, chevronIcon);
 
     if (!isStaticPreview) {
@@ -801,6 +825,13 @@ class SamDropdownEditor extends HTMLElement {
     form.schema = [
       {name: "title", selector: {text: {}}},
       {name: "label", selector: {text: {}}},
+      {name: "display_mode", selector: {select: {
+        mode: "dropdown",
+        options: [
+          {value: "standard", label: "Standard"},
+          {value: "compact", label: "Kompakt"},
+        ],
+      }}},
       {name: "layout", selector: {select: {
         mode: "dropdown",
         options: [
@@ -813,16 +844,18 @@ class SamDropdownEditor extends HTMLElement {
     form.data = {
       title: this.config_.title,
       label: this.config_.label,
+      display_mode: this.config_.display_mode,
       layout: this.config_.layout,
     };
     const labels = {
-      title: "Titel (optional)", label: "Button-Text", layout: "Layout",
+      title: "Titel (optional)", label: "Button-Text",
+      display_mode: "Darstellung", layout: "Layout",
     };
     form.computeLabel = (schema) => labels[schema.name] || schema.name;
     form.addEventListener("value-changed", (event) => {
       event.stopPropagation();
       const newValues = event.detail.value || {};
-      for (const key of ["title", "label", "layout"]) {
+      for (const key of ["title", "label", "display_mode", "layout"]) {
         if (Object.hasOwn(newValues, key)) this.config_[key] = newValues[key];
       }
       this.dispatchConfigChanged_();
@@ -946,8 +979,13 @@ class SamDropdownEditor extends HTMLElement {
     const container = createElement("div");
     container.className = "root";
     root.append(container);
-    container.append(createElement("h4", "Darstellung"));
+    container.append(createElement("h4", "Allgemein"));
     container.append(this.createAppearanceForm_());
+    const displayHint = createElement("p",
+      "Kompakt: flacher Button mit Symbol über dem Text; " +
+      "die Layout-Auswahl gilt für Standard.");
+    displayHint.className = "hint";
+    container.append(displayHint);
     const appearanceIconRow = createElement("div");
     appearanceIconRow.className = "selector-row";
     this.addSelector_(appearanceIconRow, "Symbol", this.config_.icon,

@@ -4,7 +4,7 @@ Lovelace-Dropdown-Karte für Home Assistant mit **grafischem Konfigurationsedito
 
 ## Status
 
-**Version 00.01.14 – Feature-Branch.** `master` bleibt ohne ausdrückliche Anweisung unverändert. Lauffähige Commits werden automatisch mit dem jeweiligen Tag im Format `xx.xx.xx` versehen.
+**Version 00.01.15 – Feature-Branch.** `master` bleibt ohne ausdrückliche Anweisung unverändert. Lauffähige Commits werden automatisch mit dem jeweiligen Tag im Format `xx.xx.xx` versehen.
 
 ## Funktionen
 
@@ -42,7 +42,7 @@ items:
 
 Custom Repository: `https://github.com/Salvasohn/ha-sam-dropdown-card` (HACS-Typ **Dashboard**). HACS-Installation erfolgt erst nach freigegebener Veröffentlichung auf `master`.
 
-Für den Test ohne Master-Merge kann das getaggte JavaScript-Artefakt aus `00.01.14` nach `/config/www/ha-sam-dropdown-card.js` kopiert und als Dashboard-Ressource `/local/ha-sam-dropdown-card.js?v=00.01.14` registriert werden.
+Für den Test ohne Master-Merge kann das getaggte JavaScript-Artefakt aus `00.01.15` nach `/config/www/ha-sam-dropdown-card.js` kopiert und als Dashboard-Ressource `/local/ha-sam-dropdown-card.js?v=00.01.15` registriert werden.
 
 ## Google JavaScript Style Guide
 
@@ -164,3 +164,26 @@ Farben bleiben unverändert.
 ## 00.01.14 – Kompakte Editorvorschau
 
 Die Karteneditor-Vorschau zeigt nur noch die **aufgeklappte** SAM-Dropdown-Darstellung: einen Parent-Button mit darunterstehendem, rechtsbündigem Menü. Die bisher zusätzliche geschlossene Vorschau sowie die Überschriften „Dropdown – geschlossen“ / „Dropdown – geöffnet“ entfallen. Entitätszustände, Icon-Farben, Layoutwahl und die inhaltsabhängige Menübreite bleiben erhalten. Die Vorschau führt weiterhin keine Aktionen aus. Im Dashboard bleibt die reguläre interaktive Dropdown-Karte unverändert.
+
+
+## 00.01.15 – Darstellung Standard/Kompakt
+
+Im visuellen Editor gibt es zusätzlich zum bisherigen **Layout** die Auswahl
+**Darstellung** mit den Werten **Standard** und **Kompakt**.
+
+- **Standard** (Voreinstellung) zeigt exakt die bisherige Karte; die bestehenden
+  Layouts Standard-Layout, horizontal und vertikal bleiben unverändert.
+- **Kompakt** entspricht den flachen Raumbuttons, wie in OG-Bad: 64 px hoher
+  Button, Symbol über dem Namen, kleiner Pfeil oben rechts, kompakte
+  Beschriftung. Die zusätzliche äußere Kartenumrandung und der Innenabstand
+  entfallen. Dieser Modus verwendet unabhängig von der Layout-Auswahl die
+  vertikale Symbol-Text-Anordnung.
+- Der Wechsel wirkt auf die einzige, aufgeklappte Editorvorschau genauso wie
+  auf die Dashboard-Karte. Dropdown-Aktionen, Entitätsstatus, Farben und das
+  rechts ausgerichtete, inhaltsbreite Menü bleiben unverändert.
+
+Neue YAML-Option (bei fehlendem Eintrag automatisch `standard`):
+
+```yaml
+display_mode: compact
+```

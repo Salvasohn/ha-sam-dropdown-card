@@ -194,6 +194,60 @@ async function runTests() {
   assert.equal(normalizeCardConfig({}).layout, "default");
   assert.equal(normalizeCardConfig({layout: "vertical"}).layout, "vertical");
 
+  // Compact appearance is independent of the pre-existing layout field.
+  assert.equal(normalizeCardConfig({}).display_mode, "standard");
+  assert.equal(normalizeCardConfig({display_mode: "compact"}).display_mode,
+    "compact");
+  assert.equal(normalizeCardConfig({display_mode: "unknown"}).display_mode,
+    "standard");
+  const appearanceForm = editor.shadowRoot.findAll(
+    (node) => node.tagName === "ha-form",
+  )[0];
+  const appearanceOptions = appearanceForm.schema.find(
+    (item) => item.name === "display_mode",
+  ).selector.select.options;
+  assert.deepEqual(
+    [...appearanceOptions.map((item) => item.label)],
+    ["Standard", "Kompakt"],
+  );
+  assert.equal(appearanceForm.computeLabel({name: "display_mode"}),
+    "Darstellung");
+  appearanceForm.fire("value-changed", {
+    title: "", label: "Licht", layout: "vertical", display_mode: "compact",
+  });
+  assert.equal(editor.lastEvent.detail.config.display_mode, "compact");
+  editor.setConfig(editor.lastEvent.detail.config);
+  assert.equal(editor.config_.display_mode, "compact");
+  const compactCard = new SamDropdownCard();
+  compactCard.hass = hass;
+  compactCard.setConfig({label: "Licht", layout: "horizontal",
+    display_mode: "compact",
+    items: [{label: "Licht", entity: "light.demo"}]});
+  assert.equal(compactCard.triggerButton_.className, "trigger compact");
+  assert.equal(compactCard.getCardSize(), 1);
+  assert.equal(compactCard.shadowRoot.findAll(
+    (node) => node.tagName === "ha-card" &&
+      node.className === "compact-card",
+  ).length, 1);
+  const compactChevron = compactCard.triggerButton_.findAll(
+    (node) => node.tagName === "ha-icon" &&
+      node.attributes.icon === "mdi:chevron-down",
+  )[0];
+  assert.equal(compactChevron.style.setProperty !== undefined, true);
+  compactCard.preview = true;
+  assert.equal(compactCard.shadowRoot.findAll(
+    (node) => node.className === "trigger compact",
+  ).length, 1);
+  assert.equal(compactCard.previewItemIcons_.length, 1);
+  compactCard.preview = false;
+  assert.equal(compactCard.triggerButton_.className, "trigger compact");
+  compactCard.setConfig({display_mode: "standard", layout: "vertical",
+    items: [{label: "Licht", entity: "light.demo"}]});
+  assert.equal(compactCard.triggerButton_.className, "trigger vertical");
+  compactCard.setConfig({items: [{label: "Licht", entity: "light.demo"}]});
+  assert.equal(compactCard.triggerButton_.className, "trigger");
+  assert.equal(compactCard.getCardSize(), 1);
+
 
   // Home Assistant sets .preview=true only in the edit-card preview pane.
   const previewCard = new SamDropdownCard();
@@ -417,7 +471,7 @@ async function runTests() {
     entity: "input_select.example",
   }), "call-service");
   console.log("PASS: actions, editor state, layout, two live-updating " +
-    "single expanded preview, native state colors and right-aligned popup");
+    "standard/compact display, expanded preview and native state colors");
 }
 
 runTests().catch((error) => {
