@@ -58,7 +58,8 @@ assert '{name: "layout", selector: {select: {' in source
 assert '{value: "default", label: "Standard-Layout"}' in source
 assert '{value: "horizontal", label: "Horizontales Layout"}' in source
 assert '{value: "vertical", label: "Vertikales Layout"}' in source
-assert 'triggerButton.className = this.config_.layout === "vertical"' in source
+assert 'triggerButton.className = this.config_.display_mode === "compact"' in source
+assert 'this.config_.layout === "vertical"' in source
 assert '".trigger.vertical { flex-direction: column;' in source
 assert 'chevronIcon.className = "chevron";' in source
 assert 'for (const key of ["title", "label", "display_mode", "layout"])' in source
